@@ -1,0 +1,36 @@
+\section{Introduction}
+
+When evaluating a probabilistic forecast, using different (proper) scoring rules often leads to different conclusions. For example, it has been observed that the popular CRPS (Continuous Ranked Probability Score) and log loss tend to penalize different situations more heavily {\color{blue}(citation and details needed)}. Can we construct a probabilistic forecast that minimizes (a reasonable subset of) \textit{all} proper scoring rules? This paper aims to achieve this goal through the lens of omniprediction. 
+
+In general terms, omniprediction is a framework that aims to output a prediction $p(X)$ that minimizes the error with respect to a class of loss functions $\cl$ and a class of competitor functions $\cf$:
+\[
+\sup_{S\in\cl, f\in\cf} \E[S(p(X), Y)] - \E[S(f(X), Y)].
+\]
+
+In another perspective, minimizing over all proper scoring rules is equivalent to minimizing each individual user’s decision loss induced by their own utility function given the forecast. Formally, this can be written as
+\[
+\sup_{\|u\|_2 \leq 1,\, f\in\cf} 
+\E\!\left[u\big(a(p(X);u), Y\big)\right] 
+- 
+\E\!\left[u\big(a(f(X);u), Y\big)\right],
+\]
+where $u$ denotes a user-specific utility (or loss) function, and
+\[
+a(P;u) = \arg\min_{a\in\ca} \E_{Y\sim P}[u(a,Y)]
+\]
+is the action chosen by a user who believes the forecast distribution $P$ is correct and therefore selects the action that minimizes their expected utility under $P$. In this regard, omniprediction with respect to all proper loss functions produces a forecast that is simultaneously competitive for \emph{all} downstream decision-makers, regardless of how their objectives differ. To illustrate, consider a probabilistic forecast of future COVID-19 hospitalizations. Different stakeholders may rely on the same predictive distribution but act according to different risk preferences and operational constraints. For example, an individual deciding whether to attend a social gathering may primarily care about the typical or central scenario, effectively focusing on the median or mean forecast. 
+%
+% Massage these smoothly
+In contrast, hospital administrators value higher quantile levels of the hospitalization forecast to guide healthcare planning to avoid the worst outcomes. During the first wave of COVID-19, the hospitals cancelled elective surgeries and converted operating rooms to ICUs. They built temporary facilities and expanded bed capacity. Actual hospitalizations were substantially lower {\color{red} citation needed} in some regions, leading hospitals to incur the operational costs of precautionary measures
+%
+A study of two Canadian hospitals found that using the upper 95\% prediction interval
+of a time-series model improved the mean average error {\color{red} NOT pinball-loss} of ward-level capacity planning approximately two-fold compared with capacity levels set by clinical staff relying on their own judgment \cite{johnson2023forecasting}.
+%
+Although all of these users rely on the same predictive distribution, their induced losses correspond to different proper scoring rules. Minimizing over all proper scoring rules therefore ensures that the forecast remains robust across heterogeneous decision-makers, protecting not only average-case performance but also tail-sensitive or risk-averse objectives.
+
+Under the same objective, \cite{isaac2025omni} proposes a two-player game-style algorithm that constructs a binary probabilistic forecast achieving an omniprediction error of $\tilde{\mathcal{O}}\left(\sqrt{VC(\cf)/n}\right)$ with sample size $n$. {\color{blue}Considering the classical result that the optimal error rate for binary classification under $0$–$1$ loss is $\mathcal{O}(\sqrt{VC(\cf)/n})$, this rate worsens only marginally even when optimizing over \textit{all} proper binary scoring rules.} 
+In this paper, we prove that a similar result can be achieved in more complex settings: single quantile estimation and, more generally, simulataneous multiple quantile estimation. We analyze how the omniprediction output differs from the prediction that simply minimizes the (sum of) pinball loss.
+
+The rest of the paper is organized as follows: Section \ref{sec:prior_works} reviews prior works on minimizing the loss over all binary proper loss functions in a sample efficient way and prior works on minimizing the loss over a class of loss functions on continuous domain, not restricting the loss to be proper. Section \ref{sec:single_q} and Section \ref{sec:multi_q} provide the main results of the paper. Section \ref{sec:single_q} provides a sample efficient algorithm for omniprediction of single quantile level forecasts with respect to all consistent loss functions (analogous notion of propriety for single/multiple quantile level forecasts, defined in Definition \ref{def:consistency}) and Section \ref{sec:multi_q} provides a sample efficient algorithm for omniprediction of multiple quantile level forecasts.
+
+{\color{blue}Connection to the continuous case.}

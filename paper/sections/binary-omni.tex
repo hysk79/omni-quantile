@@ -1,0 +1,52 @@
+While \cite{kleinberg2023ucal} considers the hypothetical base rate forecaster, who predicts $p_t=\beta:=\frac{1}{T}\sum_t y_t$, \cite{isaac2025omni} considers this problem as a special case of more general framework known as omniprediction.
+
+\paragraph{Omniprediction} Introduced by \cite{gopalan2022omnipredictors}, omniprediction describes the task of constructing predictors that minimize multiple loss functions simultaneously. 
+Let $a(p;S) \in \arg\min_{a\in\ca} \E_{Y'\sim\text{Ber}(p)}[S(a,Y')]$ denote an action in Athat minimizes the loss $S$ under $Y'\sim\text{Ber}(p)$. 
+Then, given a set of losses $\cl$ and competitor functions $\cf$, omniprediction aims to minimize
+\[
+\sup_{S\in\cl, f\in\cf} \E[S(a(\phat(X);S), Y)] - \E[S(f(X), Y)],
+\]
+where we consider the prediction $\phat$ as a deterministic function (not a random function that changes if $X$ changes).
+
+The goal of the paper is to use $(X,Y)$ to construct a predictor $\phat(X)$ with low omniprediction error given a comparators (base forecasts) $\cf$, i.e.
+\[
+\sup_{S\in\cl_{\text{proper}}, f\in\cf} \E[S(\phat(X), Y)] - \E[S(f(X), Y)].
+\]
+
+\paragraph{Real world example}
+A motivating example would be one where several agencies submit COVID-19 patient forecasts, $f\in \cf$, to the CDC, and the CDC wants to publish a single forecast that is useful to various people and organizations with different loss (or utility) functions, $S \in \cl_{\text{proper}}$.
+
+In this paper, $\cl := \{S:[0,1]\times \{0,1\} \to [0,1] \mid S \text{ is proper}\}$ and $\cl_{\text{proper, lc}}$ is a subset of $\cl_{\text{proper}}$ that contains left-continuous loss functions. 
+
+\begin{theorem}[Theorem 1 of \cite{ehm2016binarydecomp}, in a similar vein to Theorem \ref{thm:ucal-vcal}]
+    For all $S \in \cl_{\text{proper, lc}}$, there exists a non-negative measure $\mu$ on $[0,1]$ such that $\mu([0,1])\leq 1$ and $\forall p \in [0,1], y \in \{0,1\}$,
+    \[
+    S(p, y) = \int_0^1 S_v(p,y)d\mu(v).
+    \]
+\end{theorem}
+Using this, the paper simplifies $v$ to a discrete set $\{\frac{1}{2m}+\frac{i}{m}: i \in \{0, ..., m-1\}\}$, then proposes Algorithm \ref{alg:omni-twoplayer} based on two-player games and proves theoretical guarantee of it.
+
+\begin{algorithm}
+\caption{Two-player game based omniprediction} \label{alg:omni-twoplayer}
+\begin{algorithmic}[1]
+\State \textbf{Data:} Data $\{(X_i, Y_i)\}_{i=1}^n$, hyperparameters $m \in \mathbb{N}$, $\eta > 0$, competitor functions $\{\hat{f}_{\theta_i}\}_{i=0}^{m-1}$.
+\State $q_i(1) = \frac{1}{m}$, for all $i \in \{0, \ldots, m-1\}$;
+\For{$t = 1, \ldots, n$}
+    \State $\hat{P}_t(x) = \min_{P \in \Delta_m} \max_{p_y \in [0,1]} 
+        \mathbb{E}_{Y' \sim \text{Ber}(p_y),\, p \sim P}
+        [S(p, (x, Y'); q(t))];$
+    \State $q_i(t+1) \propto q_i(t) \exp\bigl(\eta \big(\mathbb{E}_{p \sim \hat{P}_t(X_t)}[S_{\theta_i}(p, Y_t)] 
+        - S_{\theta_i}(\hat{f}_{\theta_i}(X_t), Y_t)\big)\bigr), \quad \forall i \in \{0, \ldots, m-1\};$
+\EndFor
+\State \textbf{return} $\hat{P} = \frac{1}{n} \sum_{i=1}^n \hat{P}_i$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{theorem}\label{thm:omni-twoplayer}
+Let $\mathcal{F}$ be a function class with finite VC dimension $d$ and assume that the base predictors satisfy (4.2). Then, the randomized predictor $\hat{P}$ returned by Algorithm~\ref{alg:omni-twoplayer} with parameters $m = O(\sqrt{\log(n)/n})$ and $\eta = O(\sqrt{\log(m)/n})$ has omniprediction error bounded as
+\[
+    \sup_{S \in \mathcal{L}_{\text{proper,lc}},\, f \in \mathcal{F}}
+    \mathbb{E}_{(X,Y)} \big| \mathbb{E}_{p \sim \hat{P}(X)} [S(p, Y)] - \mathbb{E}[S(f(X), Y)] \big|
+    \le \tilde{O}\!\left( \sqrt{\frac{d}{n}} \right).
+\]
+\end{theorem}

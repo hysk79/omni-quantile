@@ -1,0 +1,98 @@
+
+\section{Expanding omniprediction to continuous case - probabilistic forecast}
+{\color{blue} Before working on this, we've decided to work on point prediction case first. See the previous section}
+
+
+\subsection{Continuous ranked probability score (CRPS) family}
+Continuous ranked probability score of a predicted CDF $F$ is defined by
+\begin{align}\label{eq:crps-x}
+\crps(F, y) = \int (F(x) - \indi{y \leq x})^2 dx,
+\end{align}
+and this is a strictly proper score. It can also be formulated as an integral of quantile scores:
+\begin{align}\label{eq:crps-tau}
+\crps(F, y) = 2 \int \rho_\tau (y-F^{-1}(\tau)) d\tau,
+\end{align}
+where $\rho_\tau(u) = \tau |u|\indi{u \geq 0} +(1-\tau)|u|\indi{u < 0} $ is the standard pinball loss function. This equivalence was first found and proved in \cite{laio2007crps} and \cite{fakoor2023flexible} addresses additional subtlety in the proof.  
+
+From this, we can consider a class of scoring rules which allows different weights on each quantile scores.
+\[
+\cl_{wC} := \left\{\ell {\Large\mid} \ell(F, y) = 2\int w_\tau \rho_\tau (y-F^{-1}(\tau))d\tau \quad\text{with}\quad \int w_\tau d\tau = 1\right\}
+\]
+\todo{
+\begin{enumerate}
+    \item Can $\cl_{wC}$ be written in some from as equation \eqref{eq:crps-x}?
+    \item Motivating utility function for $\cl_{wC}$. For example, an agent with action set $a \in \{0,1\}$ will choose $a=1$ if $\E_{y \sim F}[u(1,y)-u(0,y)] > 0$. Can we find a utility function $u$ such that this criteria looks something like weighted tail probability: $\int w_\tau F^{-1}(\tau) d\tau > C$? 
+\end{enumerate}
+}
+
+Three main parts along the streamline, which needs a bit of modification on binary case, are 1) discretization error, 2) minimax theorem and 3) omniprediction algorithm.
+
+\paragraph{Discretization error}
+\begin{lemma}[Binary case, Lemma 1 in \cite{isaac2025omni}]
+Suppose that $\cf$ is closed under constant addition. \question{Do we need this? Details below} Then, for any predictor $p: \cx \to \{0,\frac{1}{m},\frac{2}{m},...,1\}$, 
+\[
+\sup_{\theta\in[0,1], f\in\cf} \E[\ell_\theta(p(X),Y)] - \E[\ell_\theta(f(X),Y)] 
+\leq \sup_{i \in \{0,...,m-1\}, f\in\cf} \E[\ell_{\theta_i}(p(X),Y)] - \E[\ell_{\theta_i}(f(X),Y)] + \frac{1}{m}.
+\]
+\end{lemma}
+\question{
+\begin{proof}
+{\color{red} (Proposing)
+\[
+\sup_{\theta \in [0,1]} -\E[\ell_\theta (f(X),Y)] 
+\leq \sup_{\theta \in [0,1]} \left(-\E[\ell_{\theta_i(\theta)}(f(X),Y)] + \frac{1}{2m}\right)
+\leq \sup_{i \in \{0,...,m-1\}} -\E[\ell_{\theta_i}(f(X),Y)] + \frac{1}{2m}
+\]
+}
+\end{proof}
+}
+
+\begin{lemma}(Lemma 1 for $\cl_{wC}$)
+Suppose $|Y| \leq B$ and CDF $F\in\cf$ satisfies 
+\[(1-\tau)F^{-1}(\tau) - (1-\tau_i)F^{-1}(\tau_i) < \varepsilon(m),
+\]
+where $\tau_i \in \left\{\frac{1}{2m} + \frac{j}{m}\mid j=0,1,...m-1\right\}$ that is closest to $\tau$. Then, 
+\begin{align*}
+& \sup_{\theta\in[0,1], F\in\cf} \E[\rho_\tau(G(X),Y)] - \E[\rho_\tau(F(X),Y)]  \\
+& \leq \sup_{i \in \{0,...,m-1\}, F\in\cf} \E[\rho_{\tau_i}(G(X),Y)] - \E[\rho_{\tau_i}(F(X),Y)] + 2\left(\frac{B}{2m}+\eps(m)\right).
+\end{align*}
+\end{lemma}
+
+\begin{proof}
+WLOG $\tau_i \leq \tau$. $\E[\rho_\tau(F, y) - \rho_{\tau_i}(F,y)]$ equals 
+\[\begin{cases}
+    (\tau-\tau_i)y - \tau F^{-1}(\tau) + \tau_i F^{-1}(\tau_i) & \text{if } y-F^{-1}(\tau_i)y \geq y-F^{-1}(\tau) \geq 0 \\
+    (\tau-\tau_i)y + (1-\tau)F^{-1}(\tau) - (1-\tau_i)F^{-1}(\tau_i) + F^{-1}(\tau_i) -y& \text{if } y-F^{-1}(\tau_i) \geq 0 \geq y-F^{-1}(\tau) \\
+    (\tau-\tau_i)y + (1-\tau)F^{-1}(\tau) - (1-\tau_i)F^{-1}(\tau_i) & \text{if } 0 \geq y-F^{-1}(\tau_i) \geq y-F^{-1}(\tau) \\
+\end{cases}
+\]
+Since $\tau F^{-1}(\tau) \geq \tau_i F^{-1}(\tau_i)$ and $F^{-1}(\tau)-y \leq 0$ in the second case, the value is smaller than $\frac{1}{2m}\cdot B+\varepsilon(m)$. Applying this inequality to both $G$ and $F$ gives the conclusion.
+\end{proof}
+
+\paragraph{Minimax theorem}
+\begin{lemma}[Binary case, Lemma 2 in \cite{isaac2025omni}]
+    For any $x \in \cx$, 
+    \[
+    \min_{P \in \Delta_m} \max_{p_y \in [0,1]} \E_{Y'\sim\text{Ber}(p_y), p\sim P}[\ell(p, (x,Y'); q)] \leq 0,
+    \]
+    where $\ell(p, (x,y);q) := \sum_{i=0}^{m-1} q_i(\ell_{\theta_i}(p,y) - \ell_{\theta_i}(\hat{f}_{\theta_i}(x),y)$
+\end{lemma}
+\begin{lemma}(Lemma 2 for $\cl_{wC}$)
+    For any $x \in \cx$, 
+    \[
+    \min_{P \in \Delta_m} \max_{\color{red} F \in D} \E_{Y'\sim D, p\sim P}[\ell(p, (x,Y'); q)] \leq 0,
+    \]
+\end{lemma}
+\begin{proof}
+    \todo{TODO} % Theorem 8.3 in \cite{hazanoco} will be useful.
+\end{proof}
+
+
+\paragraph{Algorithm}
+Section 1 in Isaac's online probabilistic forecasting note. Now, \todo{it's not certain if the algorithm and theorem in Section 2 is valid.}
+
+\subsection{Goal/Contribution of the project}
+\begin{enumerate}
+    \item Thereotical aspect: not much things has been done for omniprediction in continuous case
+    \item Empirical aspect: forecasters are uncertain which scoring rule to use. It would be interesting to compare the final forecast from omniprediction using $\ell_{wC}$ with forecasts optimized for CRPS, log loss, or quadratic loss. We can also check the log loss or quadratic loss of the final forecast from omniprediction. \todo{Maybe Ryan has some examples to consider in mind and what forecasting people are mostly looking for}
+\end{enumerate}

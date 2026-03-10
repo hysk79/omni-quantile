@@ -1,0 +1,465 @@
+\section{Omniprediction for multiple quantile level forecasts}\label{sec:multi_q}
+In this section, we extend the result from Section \ref{sec:single_q} to multiple quantile levels. Section \ref{subsec:decomp_multi_q} discusses the previous result from \cite{fissler2016multiq} on decomposition of consistent scoring rules for multiple quantile levels. Section \ref{subsec:separate_multi_q} shows the cases where post-sorting after solving separate minimax programs for each quantile level works and the cases where it fails, which necessitates the need for solving the minimax program \eqref{eq:omni-twoplayer-minimax} jointly across all quantile levels. Section \ref{subsec:omni_multi_q} provides a closed form solution to the minimax program \eqref{eq:omni-twoplayer-minimax} for multiple quantile levels. Finally, Section \ref{subsec:omni_multi_q_online} puts the results together and provides a sample efficient algorithm for omniprediction of multiple quantile level forecasts.
+
+\cite{fissler2016multiq} proved that a consistent (proper) loss for multiple quantile levels can be written as a weighted sum of consistent (proper) loss for each quantile levels, under mild regularity conditions.
+
+
+\subsection{Decomposition of consistent scoring rules for multiple quantile levels}\label{subsec:decomp_multi_q}
+Note: \cite{osband1985} considers $F \in \cf$ to be a non-negative measures on a finite domain. \cite{fissler2016multiq} extends this to a broader class of distribution functions on $\R^d$.
+
+\begin{theorem}[Theorem 3.2 in \cite{fissler2016multiq}, Extension of Theorem 2.1 in \cite{osband1985}]
+Let $\cf$ be a convex class of distribution functions on $\mathsf{O} \subseteq \R^d$. Let $T: \cf \to \mathsf{A} \subseteq \R^k$ be a surjective, elicitable and identifiable functional with a strict $\cf$-identification function $V: \mathsf{A} \times \mathsf{O} \to \R^k$ and a strictly $\cf$-consistent scoring function $S: \mathsf{A} \times \mathsf{O} \to \R$. If the assumptions (V1) and (S1) hold, then there exists a matrix-valued function $h: \mathrm{int}(\mathsf{A}) \to \R^{k \times k}$ such that for $l \in \{1, \ldots, k\}$
+\begin{align}
+\partial_l \bar{S}(x, F) = \sum_{m=1}^{k} h_{lm}(x) \bar{V}_m(x, F)
+\end{align}
+for all $x \in \mathrm{int}(\mathsf{A})$ and $F \in \cf$. If in addition, assumption (V2) holds, then $h$ is continuous. Under the additional assumptions (V3) and (S2), the function $h$ is locally Lipschitz continuous.
+\end{theorem}
+
+Theorem above establish necessary condition on the level of expected score $\bar{S}(x,F)$. If the class $\cf$ is rich enough (F1) and the scoring and identification function are smooth enough (VS1), we have the following necessary condition for $S$ which holds pointwise.
+
+\begin{prop}[Proposition 3.5 in \cite{fissler2016multiq}]
+Let $\cf$ be convex. Assume that $\mathrm{int}(\mathsf{A}) \subseteq \R^k$ is a star domain and let $T: \cf \to \mathsf{A}$ be a surjective, elicitable and identifiable functional with a strict $\cf$-identification function $V: \mathsf{A} \times \mathsf{O} \to \R^k$ and a strictly $\cf$-consistent scoring function $S: \mathsf{A} \times \mathsf{O} \to \R$. Suppose that assumptions (V1), (V2), (S1), (F1) and (VS1) hold. Let $h$ be the matrix valued function appearing at (3.2). Then, the scoring function $S$ is necessarily of the form
+\begin{align}
+S(x, y) = \sum_{r=1}^{k} \sum_{m=1}^{k} \int_{z_r}^{x_r} h_{rm}(x_1, \ldots, x_{r-1}, v, z_{r+1}, \ldots, z_k) \times V_m(x_1, \ldots, x_{r-1}, v, z_{r+1}, \ldots, z_k, y) \, dv + a(y)
+\end{align}
+for almost all $(x, y) \in \mathsf{A} \times \mathsf{O}$ for some star point $z = (z_1, \ldots, z_k) \in \mathrm{int}(\mathsf{A})$ and some $\cf$-integrable function $a: \mathsf{O} \to \R$. On the level of the expected score $\bar{S}(x, F)$, the equation holds for all $x \in \mathrm{int}(A)$, $F \in \hat{\cf}$.
+\end{prop}
+
+\paragraph{Assumption (V4).} Let assumption (V3) hold. For all $r \in \{1, \ldots, k\}$ and for all $t \in \mathrm{int}(\mathsf{A}) \cap T(\cf)$ there are $F_1, F_2 \in T^{-1}(\{t\})$ such that
+\[
+\partial_l \bar{V}_l(t, F_1) = \partial_l \bar{V}_l(t, F_2) \quad \forall l \in \{1, \ldots, k\} \setminus \{r\}, \qquad \partial_r \bar{V}_r(t, F_1) \neq \partial_r \bar{V}_r(t, F_2).
+\]
+
+Then, Proposition 4.1 and Corollary 4.2 in \cite{fissler2016multiq} shows that with additional assumption (V4) above, $h$ is necessarily diagonal.
+\begin{theorem}[Corollary 4.2 in \cite{fissler2016multiq}]
+Let $\cf$ be convex. Suppose that $T = (T_1, \ldots, T_k): \cf \to \mathsf{A}$ is a functional with 1-identifiable components having oriented strict $\cf$-identification functions $V_m: \mathsf{A_m} \times \mathsf{O} \to \R$. Assume the interior of $\mathsf{A}:=T(\cf) \subseteq \mathsf{A}_1 \times \cdots \times \mathsf{A}_k$ is a star domain and that assumptions (V1), (V3), (V4), (S2), (F1) and (VS1) hold. Then, a scoring function $S: \mathsf{A} \times \mathsf{O} \to \R$ is strictly $\cf$-consistent for $T$ if and only if it is of the form
+\begin{align}
+    S(x_1, \ldots, x_k, y) = \sum_{m=1}^{k} S_m(x_m, y),
+\end{align}
+for almost all $(x,y) \in \mathsf{A} \times \mathsf{O}$, where $S_m: \mathsf{A}_m \times \mathsf{O} \to \R$, $m \in \{1, \ldots, k\}$, are strictly $\cf$-consistent scoring functions for $T_m$.
+\end{theorem}
+
+
+
+\subsection{Separate omniprediction for each quantile level}\label{subsec:separate_multi_q}
+\cite{fakoor2023flexible} showed that post-sorting and isotonic projection decrease the loss for \textbf{unweighted} weighted sums of pinball losses at different quantile levels. Unfortunately, post-sorting does not achieve the same for \textbf{weighted} sums of pinball losses.
+
+Define the pinball loss at quantile level $\tau$ as $\rho_\tau(x) := \tau x\indi{x \geq 0} +(1-\tau)|x|\indi{x < 0} = (\tau - \indi{x < 0})x$. Then define the loss function 
+\[
+\ell(x_1, x_2) := \E_Y [w_\alpha \rho_\alpha (y-x_1) + w_\beta \rho_\beta (y-x_2)].
+\] 
+Consider the case $\alpha < \beta$. We would like $\ell(x_1, x_2) - \ell(x_2, x_1) \geq 0$ for $x_1 > x_2$. 
+\paragraph{Counterexample} Let $Y \sim \text{Ber}(1/2)$ and $0 < x_2 < x_1 < 1$. Then, 
+\begin{align*}
+\ell(x_1, x_2) - \ell(x_2, x_1) 
+& = w_\alpha \E_Y \left[(\alpha - \indi{y < x_1})(y-x_1) - (\alpha - \indi{y < x_2})(y-x_2)\right] + \\ 
+& \qquad w_\beta \E_Y \left[(\beta - \indi{y < x_2})(y-x_2) - (\beta - \indi{y < x_1})(y-x_1) \right] \\
+& = w_\alpha (\alpha - 1/2)(x_2 - x_1) + w_\beta (\beta - 1/2)(x_1 - x_2) \\
+& = (x_1 - x_2)(w_\beta (\beta - 1/2) - w_\alpha (\alpha - 1/2))
+\end{align*}
+Note that the second equality uses the fact that $\indi{y < x_1} = \indi{y < x_2}$. When $\alpha$ and $\beta$ lie on the same side of $1/2$, there exist $(w_\alpha, w_\beta)$ for which the improvement in loss becomes negative.
+Conversely, if $(w_\alpha, w_\beta)$ does not satisfy any of the above conditions, then there exists $(Y, x_1, x_2)$ such that post-sorting increases the loss.
+
+\smallskip
+If we solve the minimax program \textbf{separately for each quantile level}, quantile crossing may occur (or maybe NOT due to the structure of $f(X)$ that it is a valid probability forecast and thus no quantile crossing occurs). Unfortuately, the following proposition shows that post-sorting does not always reduce loss for \textbf{unequally} weighted sums of pinball losses.
+
+\subsubsection{Characterizaion of weighted quantile loss that post-sorting does decrease the loss}
+\begin{prop}
+As above, define a weighted quantile loss as
+\[
+\ell(x_1, x_2) := \E_Y [w_\alpha \rho_\alpha (y-x_1) + w_\beta \rho_\beta (y-x_2)].
+\]
+If $(w_\alpha, w_\beta)$ satisfies one of the following conditions, then post-sorting does not increase the loss:
+\begin{enumerate}
+  \item $w_\alpha = w_\beta$
+  \item $w_\alpha < w_\beta$ and $(1-\alpha)w_\alpha \geq (1-\beta)w_\beta$
+  \item $w_\alpha > w_\beta$ and $\beta w_\beta \geq \alpha w_\alpha$.
+\end{enumerate}
+Conversely, if $(w_\alpha, w_\beta)$ does not satisfy any of the above conditions, then there exists $(Y, x_1, x_2)$ such that post-sorting increases the loss.
+\end{prop}
+
+\begin{proof}
+\begin{align*}
+\ell(x_1, x_2) - \ell(x_2, x_1) 
+& = w_\alpha \E_Y \left[(\alpha - \indi{y < x_1})(y-x_1) - (\alpha - \indi{y < x_2})(y-x_2) \right] + \\ 
+& \qquad w_\beta \E_Y \left[(\beta - \indi{y < x_2})(y-x_2) - (\beta - \indi{y < x_1})(y-x_1) \right] \\
+& = w_\alpha E_Y \left[\left\{-\alpha(x_1 - x_2) + \indi{y < x_1}x_1 - \indi{y < x_2}x_2 - \indi{x_2 \leq y < x_1}y \right\}\right] + \\
+& \qquad w_\beta E_Y \left[ \left\{\beta(x_1 - x_2) + \indi{y < x_2}x_2 - \indi(y < x_1)x_1 + \indi{x_2 \leq y < x_1}y \right\} \right] \\
+& = \E_Y \left[\left\{-\alpha(x_1 - x_2) + \indi{x_2 \leq y < x_1}(x_1 - y) + \indi{y < x_2}(x_1 - x_2)\right\} \right] w_\alpha + \\
+& \qquad \E_Y \left[\left\{\beta(x_1 - x_2) - \indi{x_1 \leq y < x_2}(x_1 - y) - \indi{y < x_2}(x_1 - x_2)\right\} \right] w_\beta 
+\end{align*}
+Denote the coefficient of $w_\alpha, w_\beta$ as $c_\alpha, c_\beta$ respectively. Notice that $c_\alpha + c_\beta = (\beta-\alpha)(x_1 - x_2) > 0$. Therefore $\ell(x_1, x_2) - \ell(x_2, x_1) > 0$ if $w_\alpha = w_\beta$ (Condition I).
+Denote $A = \P(y < x_2)$, $B = \P(x_2 \geq y < x_1)$ and observe that $\E_Y \indi{x_2 \geq y < x_1}(x_1 - y) \in [0, B(x_1 - x_2)]$.
+We now consider Condition II: $w_\alpha < w_\beta$ and $(1-\alpha)w_\alpha \geq (1-\beta)w_\beta$. 
+\begin{align*}
+\ell(x_1, x_2) - \ell(x_2, x_1) 
+& = \left(w_\alpha(A-\alpha) + w_\beta(\beta-A)\right)(x_1 - x_2) - (w_\beta - w_\alpha)\E_Y \indi{x_2 \leq y < x_1}(x_1 - y) \\
+& \geq -(w_\beta - w_\alpha)A + \beta w_\beta - \alpha w_\alpha - (w_\beta - w_\alpha)B(x_1 - x_2) \\
+& \geq -(w_\beta - w_\alpha)A + (w_\beta - w_\alpha) - (w_\beta - w_\alpha)B(x_1 - x_2) \\
+& \geq (w_\beta - w_\alpha)(1-A-B)(x_1 - x_2) \geq 0.
+\end{align*}
+Note that $\beta w_\beta - \alpha w_\alpha \geq w_\beta - w_\alpha$ follows from the condition and $A+B = \P(Y < x_1) \leq 1$.
+Condition III is similar.
+{\color{red} If we put this propoisition in the paper, add constructing counterexample for $(w_\alpha, w_\beta)$ that does not satisfy any of the above conditions.}
+\end{proof}
+
+Alternatively, we prove another class of loss functions where post-sorting does not increase the loss. Due to \cite{fissler2016multiq}, a loss function that is consistent for multiple quantile levels can be written as a weighted sum of consistent (proper) loss for each quantile levels, under mild regularity conditions:
+\begin{align} \label{eq:multi_q_consistent_loss}
+\ell(\{x_i\}_{i=1}^N, y) = \E_Y \sum_{i=1}^{N} w^i (\indi{y < x_i} - \tau_i)(g_i(x_i) - g_i(y)),  
+\end{align}
+where $g_i$ is a non-decreasing function.
+\begin{prop}
+If a loss function $\ell$ defined as \eqref{eq:multi_q_consistent_loss} satisfies $w_i = w$ and $g_i(x) = g(x)$ for all $i \in [N]$, then post-sorting does not increase the loss.
+\end{prop}
+\begin{proof}
+Due to additivity of the loss function, it suffices to show $\ell(x_1, x_2, y) - \ell(x_2, x_1, y) \geq 0$ for $x_1 > x_2$ where $x_i$ corresponds to the $\tau_i$-level quantile estimate. Without loss of generality, assume $w=1$.
+\begin{align*}
+\ell(x_1, x_2, y) & - \ell(x_2, x_1, y) 
+= \E_Y [ (\indi{y < x_1} - \tau_1)(g_1(x_1) - g_1(y)) - (\indi{y < x_2} - \tau_1)(g_1(x_2) - g_1(y)) + \\
+& \qquad (\indi{y < x_2} - \tau_2)(g_2(x_2) - g_2(y)) - (\indi{y < x_1} - \tau_2)(g_2(x_1) - g_2(y))] \\
+& = \E_Y [\tau_1(g_1(x_2)-g_1(x_1)) + \indi{y < x_1}g_1(x_1) - \indi{y < x_2}g_1(x_2) - \indi{x_2 \leq y < x_1}g_1(y) + \\
+& \qquad \tau_2(g_2(x_1)-g_2(x_2)) + \indi{y < x_2}g_2(x_2) - \indi{y < x_1}g_2(x_1) + \indi{x_2 \leq y < x_1}g_2(y)]
+\end{align*}
+Now using the fact that $g_1 \equiv g_2 \equiv g$, most of the terms cancel out and we have 
+\begin{align*}
+\ell(x_1, x_2, y) - \ell(x_2, x_1, y) = (\tau_2 - \tau_1)(g(x_1) - g(x_2)) \geq 0.
+\end{align*}
+{\color{blue} Just to add, in general case with $w_i=w$ but $g_i$ can be different, the difference of loss is as following:
+\begin{align*}
+\ell(x_1, x_2, y) - \ell(x_2, x_1, y) 
+& = \tau_2(g_2(x_1)-g_2(x_2)) - \tau_1(g_1(x_1)-g_1(x_2)) - \int_{x_2}^{x_1} (\P(Y < x))(g_2'(x) - g_1'(x)) dx \\
+& = (\tau_2 - \tau_1)(g_1(x_1) - g_1(x_2)) - \int_{x_2}^{x_1} (\P(Y < x) - \beta)(g_2'(x) - g_1'(x)) dx  
+\end{align*}
+Note that $g_i(x_1) - g_i(x_2) \geq 0$ since $g_i$ is non-decreasing.
+}
+\end{proof}
+
+
+
+
+\subsection{Solution for joint minimax program}
+Simlarly to Section \ref{subsec:omni_single_q}, this subsection provides a closed form solution to the minimax program \eqref{eq:omni-twoplayer-minimax}. 
+Due to Corollary 4.2 in \cite{fissler2016multiq}, a loss function that is consistent for multiple quantile levels can be written as a weighted sum of consistent (proper) loss for each quantile levels, under mild regularity conditions. We first consider a loss function that is consistent for two quantile levels $\alpha$ and $\beta$.
+\begin{align*}
+  S(x,y) = \int_{-\infty}^{\infty} S_{\alpha,\theta}(x,y) dH_\alpha(\theta) + \int_{-\infty}^{\infty} S_{\beta,\theta}(x,y) dH_\beta(\theta),
+\end{align*}
+where $S_{\tau, \theta} = (\one(y<x)-\tau)(\one(\theta<x)-\one(\theta<y))$ for $\tau = \alpha, \beta$ as defined previously.
+
+
+% Similarly to previous section, we define forecasts $\{\hat{f}_{\theta_i}^\tau\}_{i=0}^{m-1}$ that empirically minimized the losses $\{S_{\tau, \theta_i}\}_{i=0}^{m-1}$ for $\tau=\alpha, \beta$. For given $P \in \Delta_m$, denote the $\tau$-level quantile of $P$ as $P_\tau$. Then, consider $\cd(\Delta_m)$, the set of distributions over forecast $P \in \Delta_m$. The joint minimax program we want to solve is
+% \[
+% \min_{\tilde{P} \in \cd(\Delta_m)} \max_{P_y \in \Delta_m} \sum_{\tau \in \{\alpha, \beta\}}\sum_{i=0}^{m-1} w_i^\tau \E_{P\sim \tilde{P}, Y \sim P_y}[S_{\tau,\theta_i}(q_\tau(P),Y) - S_{\tau,\theta_i}(\hat{f}_{\theta_i}^\tau,Y)].
+% \]
+
+% Similarly to Lemma \ref{lem:minimax_single_q_neg}, we have the following lemma:
+% \begin{lemma}
+% \[
+% \min_{P \in \Delta_m} \max_{P_y \in \Delta_m} \sum_{\tau \in \{\alpha, \beta\}}\sum_{i=0}^{m-1} w_i^\tau \E_{p\sim P, Y \sim P_y}[S_{\tau,\theta_i}(q_\tau(p),Y) - S_{\tau,\theta_i}(\hat{f}_{\theta_i},Y)] 
+% \leq 0
+% \]
+% \end{lemma}
+% \begin{proof}
+% Similar to the proof of Lemma \ref{lem:minimax_single_q_neg}.
+% \end{proof}
+
+% Notice that the expection only depends on $\tilde{P}$ through $q_\alpha(P)$ and $q_\beta(P)$. Therefore, with abbreviating $\hat{f}_{\theta_i}^\tau,Y$ as $\hat{f}_i^\tau$, we can rewrite the program as
+% \begin{align}\label{eq:multi_minimax_program}
+% \min_{P_\alpha, P_\beta \in \Delta_m} \max_{P_y \in \Delta_m} \sum_{\tau \in \{\alpha, \beta\}}\sum_{i=0}^{m-1} w_i^\tau \E_{p_\tau \sim P_\tau, Y \sim P_y}[S_{\tau,\theta_i}(p_\tau,Y) - S_{\tau,\theta_i}(\hat{f}_i^\tau,Y)],
+% \end{align}
+% subject to the constraint $p_\alpha \leq p_\beta$. To provide a roadmap: to satisfy this constraint, we first solve the minimax program for $P_\alpha$ and $P_\beta$, where it can be proved that the resulting solutions satisfy the condition that $P_\alpha$ is stochastically smaller than $P_\beta$. Finally, we couple $P_\alpha$ and $P_\beta$ in increasing order to form a joint distribution that maintains the condition $p_\alpha \leq p_\beta$.
+
+% Now, we solve the joint minimax program.
+% \begin{lemma}\label{lem:minimax_sol_two_q}
+% Given $\hat{f}_i^\tau$ for $i =0,...,m\!-\!1$ and $\tau = \alpha, \beta$, define the quantity $V$ as
+% \begin{align} \label{eq:V_def}
+% V = \min_{j \in [m]} \left( \sum_{i=j}^{m-1} w_i^\alpha \indi{\theta_i < \hat{f}_i^\alpha} + \sum_{i=0}^{j-1} w_i^\beta (1 - \indi{\theta_i < \hat{f}_i^\beta})\right) \geq 0
+% \end{align}
+% and let $j^*$ be \textbf{any} index that minimizes the quantity.
+
+% Then, the value of the minimax program is $-(\beta-\alpha)V \leq 0$ and the solution is given by 
+% \begin{align*}
+%   P_y^* &= \alpha\delta_0 + \beta\delta_1 + (\beta-\alpha)\delta_{j^*/m} \\
+%   P^*_\tau &= C_\tau \delta_{k_\tau^*/m} + (1-C_\tau) \delta_{(k_\tau^*+1)/m}, \quad \tau = \alpha, \beta,
+% \end{align*}
+% where
+% \begin{align*}
+%   k_\alpha^* &= \min\left\{k \mid \sum_{i=0}^k w_i^\alpha \geq \sum_{i=0}^{m-1} w_i^\alpha \indi{\theta_i < \hat{f}_i^\alpha} - V \right\} \\
+%   k_\beta^* &= \min\left\{k \mid \sum_{i=0}^k w_i^\beta > \sum_{i=0}^{m-1} w_i^\beta \indi{\theta_i < \hat{f}_i^\beta} + V \right\} \\
+%   C_\alpha & = \frac{1}{w_{k_\alpha^*}^\alpha} \left( \sum_{i=0}^{k_\alpha^*} w_i^\alpha - \left(\sum_{i=0}^{m-1} w_i^\alpha \indi{\theta_i < \hat{f}_i^\alpha} - V\right)\right)\\
+%   C_\beta & = \frac{1}{w_{k_\beta^*}^\beta} \left( \sum_{i=0}^{k_\beta^*} w_i^\beta - \left(\sum_{i=0}^{m-1} w_i^\beta \indi{\theta_i < \hat{f}_i^\beta} + V\right)\right),
+% \end{align*}
+% Moreover, for any $j^*$ that achieves the minimum in \eqref{eq:V_def}, it holds that $k_\alpha^* < j^* \leq k_\beta^*$, which implies that $P_\alpha$ is stochastically smaller than $P_\beta$.
+% \end{lemma}
+
+% % PROOF START
+% \begin{proof}
+% We first prove that $k_\alpha^* < j^* \leq k_\beta^*$. Plugging in  
+% \[
+% V = \sum_{i=j}^{m-1} w_i^\alpha \indi{\theta_i < \hat{f}_i^\alpha} + \sum_{i=0}^{j-1} w_i^\beta (1 - \indi{\theta_i < \hat{f}_i^\beta}),
+% \] 
+% into the definition of $k_\alpha^*$, we observe that $j^*-1$ satisfies the inequality and thus $k_\alpha^* \leq j^*-1$.
+% \begin{align*}
+% \sum_{i=0}^{j^*-1} w_i^\alpha
+% & \geq \sum_{i=0}^{m-1} w_i^\alpha \indi{\theta_i < \hat{f}_i^\alpha} - V \\ 
+% & = \sum_{i=0}^{m-1} w_i^\alpha \indi{\theta_i < \hat{f}_i^\alpha} - \sum_{i=j}^{m-1} w_i^\alpha \indi{\theta_i < \hat{f}_i^\alpha} - \sum_{i=0}^{j-1} w_i^\beta (1 - \indi{\theta_i < \hat{f}_i^\beta}, 
+% \end{align*}
+% which is equivalent to 
+% \begin{align*}
+% \sum_{i=0}^{j^*-1} w_i^\alpha (1-\indi{\theta_i < \hat{f}_i^\alpha}) + w_i^\beta (1-\indi{\theta_i < \hat{f}_i^\beta}) \geq 0.
+% \end{align*}
+% This inequality holds since indicators are always smaller than or equal to $1$.
+
+% Similarly, we can show that $j^*-1$ does not satisfy the inequality inside the definition of $k_\beta^*$, which implies that $k_\beta^* > j^*-1$ and thus $k_\beta^* \geq j^*$.
+% \smallskip
+
+% Now, we prove that $O(P_\alpha^*, P_\beta^*, P_y^*)$ is the minimax solution. Denote the objective function by 
+% \[O(P_\alpha, P_\beta, P_y) = \sum_{\tau \in \{\alpha, \beta\}}\sum_{i=0}^{m-1} w_i^\tau \E_{p_\tau \sim P_\tau, Y \sim P_y}[S_{\tau,\theta_i}(p_\tau,Y) - S_{\tau,\theta_i}(\hat{f}_i^\tau,Y)].
+% \]
+% In a similar vein to the proof of Lemma \ref{lem:minimax_sol_single_q}, we show $O(P_\alpha^*, P_\beta^*, P_y^*) = \max_{P_y} O(P_\alpha^*, P_\beta^*, P_y)$ then show $O(P_\alpha^*, P_\beta^*, P_y^*) = \min_{P_\alpha, P_\beta \in \Delta_m} O(P_\alpha, P_\beta, P_y^*)$.
+
+% Following the decomposition \eqref{eq:oppy_q}, $O(P_\alpha, P_\beta, P_y)$ can be written as
+% \[
+% O(P_\alpha, P_\beta, P_y) = \sum_{\tau \in \{\alpha, \beta\}}\sum_{i=0}^{m-1} w_i^\tau \E_{p_\tau \sim P_\tau, Y \sim P_y}[\one(Y \leq \theta_i < p_\tau) - \tau\one(\theta_i<p_\tau) - \one(Y \leq \theta_i < \hat{f}_i^\tau)] + C_\tau,
+% \]
+% where $C_\tau =\tau \sum_{i=0}^{m-1} q_i^\tau \indi{\theta_i < \hat{f}_i^\tau}$ which does not depend on $P_\tau$ or $P_y$.
+
+% Using this decomposition, we prove $O(P_\alpha^*, P_\beta^*, P_y^*) = \max_{P_y} O(P_\alpha^*, P_\beta^*, P_y)$. Let $P_y(\frac{j}{m})=p_{yj}$ for $j=0,...,m$. Then, $O(P_\alpha^*, P_\beta^*, P_y)$ is rephrased as the following:
+% \begin{align*}
+% O(P_\alpha^*, P_\beta^*, P_y) 
+% & = \sum_{\tau \in \{\alpha, \beta\}}\E_{P_\tau^*} \left[\sum_j p_{yj} \sum_{i=j}^{m-1} w_i^\tau \left( \indi{\theta_i < p_\tau} - \indi{\theta_i < \hat{f}_i^\tau}\right)\right] + C(P_\tau^*),
+% \end{align*}
+% where $C(P_\tau^*)$ only depends on $P_\tau^*$ and does not depend on $P_y$.
+
+% Plugging in $P_\tau^*$, the summand can be expressed as 
+% \begin{align*}
+% A_j := \E_{P_\tau^*} & \left[\sum_{i=j}^{m-1} w_i^\tau \left( \indi{\theta_i < p_\tau} - \indi{\theta_i < \hat{f}_i^\tau}\right)\right] \\
+% & = 
+% \begin{cases}
+% -\sum_{i=0}^{j-1} w_i^\tau (1-\indi{\theta_i < \hat{f}_i^\tau}) + V \indi{\tau=\alpha} - V\indi{\tau=\beta} & \quad j \leq k_\tau^* \\
+% - \sum_{i=j}^{m-1} w_i^\tau \indi{\theta_i < \hat{f}_i^\tau} & \quad j > k_\tau^* \\
+% \end{cases} 
+% \end{align*}
+
+% This leads to 
+% \begin{align*}
+% A_j = 
+% \begin{cases}
+% - \sum_{i=0}^{j-1} w_i^\alpha (1-\indi{\theta_i < \hat{f}_i^\alpha}) - \sum_{i=0}^{j-1} w_i^\beta (1-\indi{\theta_i < \hat{f}_i^\beta}) & \quad j \leq k_\alpha^* \\
+% - \sum_{i=j}^{m-1} w_i^\alpha \indi{\theta_i < \hat{f}_i^\alpha} - \sum_{i=j}^{m-1} w_i^\beta \indi{\theta_i < \hat{f}_i^\beta} & \quad j > k_\beta^* \\
+% - \sum_{i=j}^{m-1} w_i^\alpha \indi{\theta_i < \hat{f}_i^\alpha} - \sum_{i=0}^{j-1} w_i^\beta (1-\indi{\theta_i < \hat{f}_i^\beta}) + V & \quad k_\alpha^* < j \leq k_\beta^*
+% \end{cases}
+% \end{align*}
+% Notice that $A_j$ is non-increasing on $j \leq k_\alpha^*$ and non-decreasing on $j > k_\beta^*$. $A_0 = 0$ and $A_m = 0$ is the maximum value of $A_j$ in these ranges, respectively. Also note that $A_j \leq 0$ for $k_\alpha^* < j \leq k_\beta^*$ due to the definition of $V$ and $A_{j^*} = 0$ since $k_\alpha^* < j^* \leq k_\beta^*$.
+
+% To sum up, $P_y^*$ achieves the maximum value of $O(P_\alpha^*, P_\beta^*, P_y)$ since it puts mass only on $j=0, j^*, m$, which are the points that maximize $A_j$.
+
+% Lastly, we show that $O(P_\alpha^*, P_\beta^*, P_y^*) = \min_{P_\alpha, P_\beta} O(P_\alpha, P_\beta, P_y^*)$. This follows directly from the consistency of $S_{\tau,\theta_i}$ losses, since $k_\alpha^* / m$ and $(k_\alpha^*+1) / m$ are both $\alpha$-level quantile of $P_y^*$ and $k_\beta^* / m$ and $(k_\beta^*+1) / m$ are both $\beta$-level quantile of $P_y^*$.
+% \end{proof}
+% % PROOF END
+
+% \paragraph{Minor details}
+% In definition of $k_\alpha^*$ and $k_\beta^*$, we use $\geq$ and $>$, respectively. If $k_\alpha^*$ is also defined using $>$, the difference occurs when there exists $j$ that satisfies $\sum_{i=0}^{j-1} w_i^\alpha = \sum_{i=0}^{m-1} w_i^\alpha \indi{\theta_i < \hat{f}_i^\alpha} - V$. 
+% \begin{enumerate}
+%   \item $\forall i \in [m], w_i^\alpha > 0$. In this case, $k_\alpha^*$ differs by 1, but $P_\alpha^* = \delta_{j/m}$ remains the same.
+%   \item $\exists i \in [m], w_i^\alpha = 0$. In this case, $P_\alpha^*$ is also different. For example, let $w_0^\alpha = \alpha$, $w_1^\alpha = 0$, $w_2^\alpha > 0$, then definition using $\geq$ gives $P_\alpha^* = \delta_{1/m}$ (smallest possible $\alpha$-level quantile) while definition using $>$ gives $P_\alpha^* = \delta_{2/m}$ (largest possible $\alpha$-level quantile).
+% \end{enumerate}
+
+
+% \subsection{Solving joint minimax program for arbitrary number of quantile levels}
+Now we extend the result to the case of arbitrary number of quantile levels. We denote $N$ as the number of quantile levels and $\tau_1 < \tau_2 < ... < \tau_N$ as the quantile levels. We also denote $\hat{f}_i^n$ for $i =0,...,m\!-\!1$ and $n \in [N]$, which is a $\tau_n$-level quantile forecast. The minimax program is given by
+
+\[
+\min_{\tilde{P} \in \cd(\Delta_m)} \max_{P_y \in \Delta_m} \sum_{n=1}^N \sum_{i=0}^{m-1} w_i^n \E_{P\sim \tilde{P}, Y \sim P_y}[S_{\tau_n,\theta_i}(q_{\tau_n}(P),Y) - S_{\tau_n,\theta_i}(\hat{f}_i^n,Y)].
+\]
+
+We rewrite the program as follows:
+\[
+\min_{P_1, P_2, ..., P_N \in \Delta_m} \max_{P_y \in \Delta_m} \sum_{n=1}^N \sum_{i=0}^{m-1} w_i^n \E_{p_n \sim P_
+, Y \sim P_y}[S_{\tau_n,\theta_i}(p_n,Y) - S_{\tau_n,\theta_i}(\hat{f}_i^n,Y)],
+\]
+subject to the constraint $p_n \leq p_{n+1}$ for $n = 1, ..., N-1$, where $S_{\tau_n,\theta_i}(x, Y) = (\one(Y < x)-\tau_n)(\one(\theta_i<x)-\one(\theta_i<Y))$ as defined previously.
+
+Before getting into the minimax solution, we first prove the following lemmas.
+
+\begin{lemma}\label{lem:jn_sort}
+Define the quantity $V_n$ for $n \in [N-1]$ as
+\begin{align} \label{eq:Vn_def}
+V_n := \min_{j \in [m]} \left( \sum_{i=j}^{m-1} \sum_{s=1}^{n} w_i^s \indi{\theta_i < \hat{f}_i^s} + \sum_{i=0}^{j-1} \sum_{s=n+1}^{N}  w_i^s (1 - \indi{\theta_i < \hat{f}_i^s})\right) \geq 0
+\end{align}
+and $V_0 = V_N := 0$.
+Let $J_n^*$ be the set of indices $j \in [m]$ that minimizes the $V_n$. 
+\smallskip \\
+Then, there exists a sorted sequence $0=j_0^* \leq j_1^* \leq ... \leq j_{N-1}^* \leq j_N^* = m$ such that $j_n^* \in J_n^*$ for $n \in [N-1]$.
+\end{lemma}
+
+\begin{proof}
+Suppose there exists a pair of indices $n, n+1$ such that $j_n^* > j_{n+1}^*$. Using the definition of $V_n$, we have 
+\begin{align*}
+j_n^* &= \argmin_{j \in [m]} \left( \sum_{i=j}^{m-1} \sum_{s=1}^{n} w_i^s \indi{\theta_i < \hat{f}_i^s} + \sum_{i=0}^{j-1} \sum_{s=n+2}^{N}  w_i^s (1 - \indi{\theta_i < \hat{f}_i^s}) + \sum_{i=0}^{j-1} w_i^{n+1} (1 - \indi{\theta_i < \hat{f}_i^{n+1}})\right) \\
+j_{n+1}^* &= \argmin_{j \in [m]} \left( \sum_{i=j}^{m-1} \sum_{s=1}^{n+1} w_i^s \indi{\theta_i < \hat{f}_i^s} + \sum_{i=0}^{j-1} \sum_{s=n+2}^{N}  w_i^s (1 - \indi{\theta_i < \hat{f}_i^s}) + \sum_{i=j}^{m-1} w_i^{n+1}\indi{\theta_i < \hat{f}_i^{n+1}}\right).
+\end{align*}
+Two expressions share the first two terms and differ in the last term. We abbreviate these terms as following:
+\begin{align*}
+C_j & := \sum_{i=j}^{m-1} \sum_{s=1}^{n} w_i^s \indi{\theta_i < \hat{f}_i^s} + \sum_{i=0}^{j-1} \sum_{s=n+2}^{N}  w_i^s (1 - \indi{\theta_i < \hat{f}_i^s}) \\
+D_j & := \sum_{i=0}^{j-1} w_i^{n+1} (1 - \indi{\theta_i < \hat{f}_i^{n+1}}) \\
+E_j & := \sum_{i=j}^{m-1} w_i^{n+1}\indi{\theta_i < \hat{f}_i^{n+1}}.
+\end{align*}
+Note that $D_j$ is non-decreasing in $j$ and $E_j$ is non-increasing in $j$.
+Since $j_n^*$ and $j_{n+1}^*$ are the indices that minimize the $V_n$ and $V_{n+1}$, respectively, we have $C_{j_n^*} + D_{j_n^*} \leq C_{j_{n+1}^*} + D_{j_{n+1}^*}$ and $C_{j_n^*} + E_{j_n^*} \geq C_{j_{n+1}^*} + E_{j_{n+1}^*}$. This implies that 
+\[
+E_{j_{n+1}^*} - E_{j_n^*} \leq C_{j_n^*} - C_{j_{n+1}^*} \leq D_{j_{n+1}^*} - D_{j_n^*}.
+\]
+Because of the monotonicity of $D_j$ and $E_j$ and the assumption that $j_n^* > j_{n+1}^*$, the leftmost term should be non-negative and the rightmost term should be non-positive. Therefore, we obtain 
+\[
+C_{j_n^*} - C_{j_{n+1}^*} = D_{j_n^*} - D_{j_{n+1}^*} = E_{j_n^*} - E_{j_{n+1}^*} = 0 \quad \Rightarrow j_{n+1}^* \in J_n^*, \,\, j_n^* \in J_{n+1}^*.
+\]
+By choosing $j_{n+1}^*$ as a minimizer of $V_n$ and $j_n^*$ as a minimizer of $V_{n+1}$, we resolve the unsorted pair of indices. Repeating this process yields a sorted sequence $0=j_0^* \leq j_1^* \leq ... \leq j_{N-1}^* \leq j_N^* = m$ and this proves the existence of sorted sequence.
+\\
+Due to its existence, we can simply obtain a sorted sequence by choosing $j_n^* = \min J_n^*$ for all $n \in [N]$.
+\end{proof}
+
+\begin{lemma} \label{lem:Pn_def}
+Given a sorted sequence $0=j_0^* \leq j_1^* \leq ... \leq j_{N-1}^* \leq j_N^* = m$, there exists a distribution $P_n^*$ for $n \in [N]$ of the form
+\begin{align}\label{eq:Pn_def}
+P_n^* = (1-C_n)\delta_{k_n / m} + C_n\delta_{(k_n+1)/m},
+\end{align}
+such that 
+\begin{enumerate}
+  \item $j_{n-1}^* \leq k_n$
+  \item $k_n < j_n^*$ if $j_{n-1}^* \neq j_n^*$ and $k_n = j_n^*$ with $C_n=0$ if $j_{n-1}^* = j_n^*$.
+  \item The support of $P_n^*$ is contained in $[j_{n-1}^*/m, j_n^*/m]$.
+  \item $\E_{p_n \sim P_n^*} \left[ \sum_{i=0}^{m-1} w_i^n \left( \indi{\theta_i < p_n} - \indi{\theta_i < \hat{f}_i^n} \right) \right] = V_{n-1}-V_n$.
+\end{enumerate}
+\end{lemma}
+\begin{proof}
+In this proof, we abbreviate $\indi{\theta_i < \hat{f}_i^n}$ by $\one_i^n$ for $i \in [m]$ and $n \in [N]$.
+Abbreviate the expression inside the definition of $V_n$ as follows:
+\begin{align}\label{eq:Vn_j_def}
+V_n(j) = \sum_{i=j}^{m-1} \sum_{s=1}^{n} w_i^s \one_i^n + \sum_{i=0}^{j-1} \sum_{s=n+1}^{N}  w_i^s (1 - \one_i^n)  \quad \forall j \in [m], n \in [N].
+\end{align}
+Note that $V_n = V_n(j_n^*)$ for all $n \in [N-1]$ and that $V_n(j) \geq V_n(j_n^*)$ for all $j \in [m]$.
+\\
+With the fact that $\indi{\theta_i < k/n} = \indi{i < k}$, the last condition in the lemma statement is equivalent to 
+\begin{align} 
+\sum_{i=0}^{k_n-1} w_i^n + C_n w_{k_n^*}^n = \sum_{i=0}^{m-1} w_i^n \one_i^n - V_n + V_{n-1} = \sum_{i=0}^{j_{n-1}^*-1} w_i^n + V_n(j_{n-1}^*) - V_n(j_n^*), \label{eq:Pn_eq}
+\end{align}
+where the last equality used the fact that $\sum_{i=0}^{m-1} w_i^n \one_i^n + V_{n-1}(j) = \sum_{i=0}^{j-1} w_i^n + V_n(j)$ with $j=j_{n-1}^*$.
+\smallskip \\
+Now we divide the cases into three cases. 
+First, consider the case where $j_{n-1}^* = j_n^*$. In this case, simply $k_n = j_{n-1}^*$ with $C_n=0$ satisfies the equation \eqref{eq:Pn_eq}. Therefore, $P_n^* = \delta_{j_{n-1}^*/m}$ satisfies the conditions.
+Second, consider the case where $j_{n-1}^* < j_n^*$ but $V_n(j_{n-1}^*) = V_n(j_n^*)$. $k_n = j_{n-1}^*$ with $C_n=0$ again satisfies the equation \eqref{eq:Pn_eq} and $k_n = j_{n-1}^* < j_n^*$ in this case.
+Lastly, consider the case where $V_n(j_{n-1}^*) > V_n(j_n^*)$. We have 
+\begin{align*}
+  \sum_{i=0}^{j_{n-1}^*-1} w_i^n 
+  & < \sum_{i=0}^{j_{n-1}^*-1} w_i^n + V_n(j_{n-1}^*) - V_n(j_n^*) \\
+  & = \sum_{i=0}^{m-1} w_i^n \one_i^n - V_n + V_{n-1} \\
+  & = \sum_{i=0}^{j_{n}^*-1} w_i^n + V_{n-1}(j_{n-1}^*) - V_{n-1}(j_n^*) 
+  \leq \sum_{i=0}^{j_{n}^*-1} w_i^n,
+\end{align*}
+
+where two equalities used the fact that $\sum_{i=0}^{m-1} w_i^n \one_i^n + V_{n-1}(j) = \sum_{i=0}^{j-1} w_i^n + V_n(j)$ with $j=j_n^*$ on the second term of the equation \eqref{eq:Pn_eq}.
+This implies that there exists a $j_{n-1}^* \leq k_n < j_n^*$ such that 
+\begin{align*}
+  \sum_{i=0}^{k_n} w_i^n \geq \sum_{i=0}^{m-1} w_i^n \one_i^n - V_n + V_{n-1} \quad \text{and} \quad \sum_{i=0}^{k_n-1} w_i^n < \sum_{i=0}^{m-1} w_i^n \one_i^n - V_n + V_{n-1}.
+\end{align*}
+With such $k_n$, we define $P_n^*$ with $C_n = \frac{1}{w_{k_n}^n} \left( \sum_{i=0}^{m-1} w_i^n \one_i^n - V_n + V_{n-1} - \sum_{i=0}^{k_n-1} w_i^n \right)$ and this satisfies the conditions since $k_n+1 \leq j_n^*$.
+\end{proof}
+
+
+
+
+
+Now we provide the solution to the minimax program \eqref{eq:omni-twoplayer-minimax}.
+\begin{theorem}
+Given quantile levels $\tau_1 < \tau_2 < ... < \tau_N$, quantile forecasts $\hat{f}_i^n$ for $i =0,...,m\!-\!1$ and $n \in [N]$, define $V_n$ $n \in [N-1]$ as in equations \eqref{eq:Vn_def}, with $V_0 = V_N := 0$. Let $\{j_n^*\}_{n=1}^{N-1}$ be a sorted sequence of indices that minimizes the $V_n$ for $n \in [N-1]$ with $j_0^* = 0$ and $j_N^* = m$ where the existence of the sequence is guaranteed by Lemma \ref{lem:jn_sort}. 
+\smallskip \\
+Then, $P_n^*$ for $n \in [N]$ given by \eqref{eq:Pn_def} with 
+\[
+P_y^* = \tau_1 \delta_0 + (1-\tau_N)\delta_1 + \sum_{n=1}^{N-1}(\tau_{n+1}-\tau_n)\delta_{j_t^*/m}
+\]
+solves the minimax program \eqref{eq:omni-twoplayer-minimax} and the value of the minimax program is 
+\[
+-\sum_{n=1}^{N-1}(\tau_{n+1}-\tau_n)V_n \leq 0.
+\]
+
+% Then, the value of the minimax program is $-\sum_{t=1}^{N-1}(\tau_{t+1}-\tau_t)V_t \leq 0$ and the solution is given by 
+% \begin{align*}
+%   P_y^* &= \tau_1 \delta_0 + (1-\tau_N)\delta_1 + \sum_{t=1}^{N-1}(\tau_{t+1}-\tau_t)\delta_{j_t^*/m} \\
+%   P_t^* &= C_t \delta_{\underline{k_t^*}/m} + (1-C_t) \delta_{(\underline{k_t^*}+1)/m}, \quad t \in [N],
+% \end{align*}
+% where
+% \begin{align*}
+%   \underline{k_t^*} &= \min\left\{k \mid \sum_{i=0}^k w_i^t \geq \sum_{i=0}^{m-1} w_i^t \indi{\theta_i < \hat{f}_i^t} - V_t + V_{t-1} \right\} \\
+%   \overline{k_t^*} &= \min\left\{k \mid \sum_{i=0}^k w_i^t > \sum_{i=0}^{m-1} w_i^t \indi{\theta_i < \hat{f}_i^t} - V_t + V_{t-1} \right\} \\
+%   C_t & = \frac{1}{w_{\underline{k_t^*}}^t} \left( \sum_{i=0}^{\underline{k_t^*}} w_i^t - \left(\sum_{i=0}^{m-1} w_i^t \indi{\theta_i < \hat{f}_i^t} - V_t + V_{t-1}\right)\right),
+% \end{align*}
+% for $t \in [N]$ with $V_0 = V_N := 0$.
+
+% Moreover, for any $j_t^*$ that achieves the minimum in \eqref{eq:Vt_def}, it holds that $\underline{k_t^*} < j_t^* \leq \overline{k_{t+1}^*}$, \sout{which implies that $P_t^*$ is stochastically smaller than $P_{t+1}^*$}. {\color{red} I'm confident that $\underline{k_t^*} \leq \underline{k_{t+1}^*}$ also holds, so that $\underline{k_t^*}$ doesn't have crossing issue.}
+\end{theorem}
+\begin{proof}
+Denote the minimax objective function by 
+\[O(\{P_n\}_{n=1}^N, P_y) = \sum_{n=1}^N \sum_{i=0}^{m-1} w_i^n \E_{p_n \sim P_n, Y \sim P_y}[S_{\tau_n,\theta_i}(p_n,Y) - S_{\tau_n,\theta_i}(\hat{f}_i^n,Y)].
+\]
+In a similar vein to the proof of Lemma \ref{lem:minimax_sol_single_q}, we show $O(\{P_n^*\}_{n=1}^N, P_y^*) = \max_{P_y} O(\{P_n^*\}_{n=1}^N, P_y)$ then show $O(\{P_n^*\}_{n=1}^N, P_y^*) = \min_{P_n \in \Delta_m, n\in[N]} O(\{P_n\}_{n=1}^N, P_y^*)$.
+
+Following the decomposition \eqref{eq:oppy_q}, $O(\{P_n\}_{n=1}^N, P_y)$ can be written as
+\[
+O(\{P_n\}_{n=1}^N, P_y) = \sum_{n=1}^N \sum_{i=0}^{m-1} w_i^n \E_{p_n \sim P_n, Y \sim P_y}[\one(Y \leq \theta_i < p_n) - \tau_n \one(\theta_i<p_n) - \one(Y \leq \theta_i < \hat{f}_i^n)] + C_n,
+\]
+where $C_n =\tau_n \sum_{i=0}^{m-1} w_i^n \indi{\theta_i < \hat{f}_i^n}$ which does not depend on $P_n$ or $P_y$.
+
+Using this decomposition, we prove $O(\{P_n^*\}_{n=1}^N, P_y^*) = \max_{P_y} O(\{P_n^*\}_{n=1}^N, P_y)$. Let $P_y(\frac{j}{m})=p_{yj}$ for $j=0,...,m$. Then, $O(\{P_n^*\}_{n=1}^N, P_y)$ is rephrased as the following:
+\begin{align}\label{eq:O_Pstar_Py_decomp}
+O(\{P_n^*\}_{n=1}^N, P_y) 
+& = \sum_{n=1}^N \E_{p_n \sim P_n^*} \left[\sum_j p_{yj} \sum_{i=j}^{m-1} w_i^n \left( \indi{\theta_i < p_n} - \indi{\theta_i < \hat{f}_i^n}\right)\right] + C(P_n^*),
+\end{align}
+where $C(P_n^*) = - \tau_n \E_{p_n \sim P_n^*} \sum_{i=0}^{m-1} w_i^n (\indi{\theta_i < p_n} - \indi{\theta_i < \hat{f}_i^n})$ only depends on $P_n^*$ and does not depend on $P_y$.
+
+Plugging in $P_n^*$ and abbreviating $\indi{\theta_i < \hat{f}_i^n}$ with $\one_i^n$, the summand can be expressed as 
+\begin{align*}
+A_j^n := \E_{P_n^*} & \left[\sum_{i=j}^{m-1} w_i^n \left( \indi{\theta_i < p_n} - \one_i^n\right)\right] \\
+& = 
+\begin{cases}
+-\sum_{i=0}^{j-1} w_i^n (1-\one_i^n) - V_n + V_{n-1} & \quad j \leq k_n^* \\
+- \sum_{i=j}^{m-1} w_i^n \one_i^n & \quad j > k_n^* \\
+\end{cases} 
+\end{align*}
+
+This leads to 
+\begin{align*}
+A_j := \sum_{n=1}^N A_j^n = 
+\begin{cases}
+-\sum_{n=1}^N \sum_{i=0}^{j-1} w_i^n(1-\one_i^n) + V_0 & \quad j \leq k_1 \\
+-\sum_{n=1}^\nu \sum_{i=j}^{m-1} w_i^n \one_i^n - \sum_{n=\nu+1}^{N} \sum_{i=0}^{j-1} w_i^n (1-\one_i^n) + V_\nu & \quad k_\nu < j \leq k_{\nu+1}, \,\, \nu \in [N-1] \\
+-\sum_{n=1}^N \sum_{i=j}^{m-1} w_i^n \one_i^n + V_N & \quad j > k_N
+\end{cases}
+\end{align*}
+Notice that $A_j$ is non-increasing on $j \leq k_1$ and non-decreasing on $j > k_N$. $A_0 = 0$ and $A_m = 0$ is the maximum value of $A_j$ in these ranges, respectively. Next, observe that $A_j \leq 0$ for all $j=0,1,...,m$ since $V_n$ is the minimum value that $\sum_{\nu=1}^n \sum_{i=j}^{m-1} w_i^n \one_i^\nu + \sum_{\nu=n+1}^{N} \sum_{i=0}^{j-1} w_i^{\nu} (1-\one_i^{\nu})$ can achieve by its definition. It suffices to show that $A_{j_n^*} = 0$ for $n \in [N-1]$ since $P_y^*$ only puts mass on these points. Note that $A_{j_0} = A_0 = 0$ and $A_{j_N} = A_m = 0$.
+
+From the first and second condition in the statement of Lemma \ref{lem:Pn_def}, we have $k_\nu < j_\nu^* \leq k_{\nu+1}$ if $j_{\nu-1}^* \neq j_\nu^*$ and $j_{\nu-1}^* = j_\nu^*= k_\nu$ if $j_{\nu-1}^* = j_\nu^*$, for $\nu \in [N-1]$. In the former case, we obtain $A_{j_\nu^*} = 0$ from $k_\nu < j \leq k_{\nu+1}$ case in the definition of $A_j$ above. In the latter case, $j_\nu^* = k_\nu$ does not fall into the range $(k_\nu, k_{\nu+1}]$. Still, from $k_{\nu-1} < j \leq k_{\nu}$ case ($j \leq k_1$ case if $\nu=1$) in the definition of $A_j$ , we have
+\begin{align*}
+A_{j_n^*} 
+& = -\sum_{n=1}^{\nu-1} \sum_{i=j}^{m-1} w_i^n \one_i^n - \sum_{n=\nu}^{N} \sum_{i=0}^{j-1} w_i^n (1-\one_i^n) + V_{\nu-1} \\
+& =  - V_{\nu-1}(j_n^*) + V_{\nu-1} = -V_{\nu-1}(j_{n-1}^*) + V_{\nu-1} = 0,
+\end{align*}
+where $V_n(j)$ is defined as equation \eqref{eq:Vn_j_def}. Therefore, $A_{j_n^*} = 0$ for all $n \in [N-1]$ and $O(\{P_n^*\}_{n=1}^N, P_y^*) = \max_{P_y} O(\{P_n^*\}_{n=1}^N, P_y)$.
+
+Next, we show that $O(\{P_n^*\}_{n=1}^N, P_y^*) = \min_{P_n \in \Delta_m, n\in[N]} O(\{P_n\}_{n=1}^N, P_y^*)$. This follows directly from the consistency of $S_{\tau,\theta_i}$ losses and the third condition in Lemma \ref{lem:Pn_def}. Any point in the support of $P_n^*$ is $\tau_n$-level quantile of $P_y^*$ since $P_y(Y \leq j_{n-1}^*/m) = \tau_n$ and $P_y(Y \geq j_n^*/m) = \tau_n$.
+
+Lastly, we compute the value of the minimax program. Decomposition \eqref{eq:O_Pstar_Py_decomp} can be rewritten as 
+\[
+O(\{P_n^*\}_{n=1}^N, P_y) = \sum_{j} p_{yj} A_j + \sum_{n=1}^N C(P_n^*).
+\]
+Since $P_Y^*$ only puts mass on points $j/m$ such that $A_j = 0$, plugging in $P_y^*$ into the equation above yields
+\begin{align*}
+O(\{P_n^*\}_{n=1}^N, P_y^*) 
+&= \sum_{n=1}^N C(P_n^*) = -\sum_{n=1}^N \tau_n \E_{p_n \sim P_n^*} \sum_{i=0}^{m-1} w_i^n (\indi{\theta_i < p_n} - \one_i^n) \\
+&  = -\sum_{n=1}^N \tau_n (V_{n-1} - V_n) = -\sum_{n=1}^{N-1}(\tau_{n+1}-\tau_n)V_n \leq 0,
+\end{align*}
+where the second from the last equality used the fourth condition in Lemma \ref{lem:Pn_def}.
+\end{proof}
+
+
+\subsection{Sample efficient algorithm for omniprediction of multiple quantile level forecasts}\label{subsec:omni_multi_q}
+Straightforward extension, to be added. Both algorithm and guarantee.

@@ -1,0 +1,31 @@
+\section{Framework and notation}
+
+\begin{enumerate}
+    \item Data $\{(X_i, Y_i)\}_{i=1}^n \subseteq \cx \times \cy$: i.i.d. (can be extended to sequential data)
+    \item Scoring rule: $S: \cp(\cy) \times \cy \to \R$
+    \item Loss function: $\ell: \cy \times \cy \to \R$
+    % loss functions $\cl := \{S:[0,1]\times \{0,1\} \to [0,1] \mid \forall p \in [0,1], p \in \arg\min_{a\in[0,1]} \E_{Y'\sim\text{Ber}(p)}[S(a, Y')]\}$
+    % \item Extension of the second argument: for $q\in[0,1]$, $S(p,q):=\E_{y\sim\text{Ber}(p)}[S(p,y)]$
+    % \item Univariate form of a scoring rule: $S(p) = S(p,p)$
+\end{enumerate}
+
+\begin{defi}
+    A scoring rule $S$ is proper if 
+    \[
+    \E_{Y \sim F}[S(F, Y)] \leq \E_{Y \sim F}[S(F', Y)], \quad \forall F' \neq F.
+    \]
+\end{defi}
+
+\begin{defi}
+    A loss function $\ell$ is consistent for the functional $T$ (for $\cf$) if 
+    \[
+    \E_F[\ell(t,Y)] \leq \E_F[\ell(z,Y)]
+    \]
+    for all probability measures $F \in \cf$, all $t \in T(F)$, and all point forecasts $z \in \cy$.
+\end{defi}
+
+\subsection{Misc.}
+\begin{enumerate}
+    \item CDF is right-continuous
+    \item $q_\tau(F) := \inf\{x: F(x) \geq p\}$, or $x$ such that $\P(X\leq x) \geq q$ and $\P(X < x) \leq q$. 
+\end{enumerate}

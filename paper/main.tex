@@ -1,0 +1,48 @@
+\documentclass{article}
+
+\newif\ifshowquestions
+\newif\ifshowtodos
+% \showquestionstrue    % set to \showquestionsfalse to hide
+\showquestionsfalse
+\showtodostrue
+% \showtodosfalse
+
+\newcommand{\question}[1]{%
+  \ifshowquestions
+    {\color{red}#1}
+  \fi
+}
+\newcommand{\todo}[1]{%
+  \ifshowquestions
+    {\color{brown}#1}
+  \fi
+}
+
+\input{preamble.tex}
+
+\begin{document}
+
+\title{Sample Efficient Omnipredction for Multiple Quantile Level Forecasts}
+\date{}
+\author{}
+\maketitle
+
+% \input{sections/notations.tex}
+
+\input{sections/intro.tex}
+\input{sections/prior_works.tex}
+%\input{sections_aux/pessimistic_multiclass}
+% \input{sections/prior_results}
+\input{sections/single_q.tex}
+\input{sections/multi_q.tex}
+\input{sections/experiments.tex}
+
+
+
+
+%\input{sections/continuous}
+
+\bibliographystyle{alpha}
+\bibliography{../references}
+
+\end{document}

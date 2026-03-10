@@ -1,9 +1,12 @@
 __pycache__/
 *.pyc
 .env
+.venv/
 .vscode/
 .DS_Store
 paper/*.aux
 paper/*.log
 paper/*.out
 paper/*.toc
+paper/build/
+data/

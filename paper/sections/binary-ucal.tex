@@ -1,0 +1,44 @@
+The paper mainly considers the regret of the Forecaster with respect to the hypothetical base rate forecaster, who predicts $p_t=\beta:=\frac{1}{T}\sum_t y_t$ every round.
+\[
+\reg_S(\bp, \by) := \sum_{t=1}^T S(p_t, y_t) - \sum_{t=1}^T S(\beta, y_t)
+\]
+For comparison, the calibration of the Forecaster is 
+\[
+\cal(\bp,\by) := \sum_{p \in [0,1]} |pn_p - m_p|, 
+\]
+where $n_p :=|\{t: p_t=p\}|$ and $m_p := |\{t: p_t=p \text{ and } y_t=1\}|$.
+
+\begin{lemma}[Lemma 7 in \cite{kleinberg2023ucal}]
+    There exists a sequence of $T$ predictions $\bp$ and binary events $\by$ where $\cal(\bp, \by) = \Omega(T)$ but for any choice of bounded scoring rule $S$, $\reg_S(\bp, \bx)=o(T)$.
+\end{lemma}
+While there are numerous algorithms that guarantee $O(\sqrt{T})$ regret, the best-known procedures for $o(T)$ calibration only incur $O(T^{2/3})$ calibration error (\cite{blum2007calibration}).
+We want a middle ground between minimizing the regret with respect to a single scoring rule and calibration. The paper defines $\cl := \{S:[0,1]\times \{0,1\} \to [-1,1] \mid S \text{ is proper}\}$ and U-calibration as
+\[
+\ucal(\bp, \by) = \sup_{S \in \cl} \reg_S (\bp, \by).
+\]
+Then the paper shows that proper scoring rule for binary prediction can be decomposed into a positive linear combination of V-shaped scoring rule $S_v(p) = -|p-v|$. Define $\vcal(\bp,\by) := \sup_{v\in[0,1]} \reg_{S_v}(\bp,\by)$. 
+
+\begin{theorem}[Theorem 8 in \cite{kleinberg2023ucal}] \label{thm:ucal-vcal}
+    For any sequence of $T$ predictions $\bp$ and binary events $\by$, we have that
+    \[
+    \frac{1}{2}\ucal(\bp,by) \leq \vcal(\bp,by) \leq \ucal(\bp,by).
+    \]
+\end{theorem}
+Due to this theorem, for binary case, it suffices to only consider $S_v, v\in[0,1]$. Algorithm \ref{alg:FH} below guarantees $O(\sqrt{T})$ V-calibration error. 
+\begin{algorithm}
+\caption{\textsc{ForecastHedge}}\label{alg:FH}
+\begin{algorithmic}[1]
+\State Let $S(x) = e^x/(e^x + e^{-x})$ and $\eta = 1 / \sqrt{T}$.
+\State Predict $p_1 = 1/2$ and observe $x_1$. Set $\hat{x}_1 = x_1$.
+\For{$t = 2$ to $T$}
+    \State Sample prediction $p_t \in [0,1]$ such that
+    \[
+        \mathbb{P}[p_t \le v] = S\bigl(\eta (t-1)(v - \hat{x}_{t-1})\bigr), \quad \forall v \in [0,1]
+    \]
+    \State Observe $x_t$ and update
+    \[
+        \hat{x}_t = \frac{1}{t-1} \sum_{s=1}^{t-1} x_s
+    \]
+\EndFor
+\end{algorithmic}
+\end{algorithm}

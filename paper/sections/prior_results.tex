@@ -1,0 +1,38 @@
+\section{Prior results}
+
+
+\subsection[Fissler and Ziegel 2016]{Fissler and Ziegel 2016 \cite{fissler2016multiq}}
+
+Note: \cite{osband1985} considers $F \in \cf$ to be a non-negative measures on a finite domain. \cite{fissler2016multiq} extends this to a broader class of distribution functions on $\R^d$.
+
+\begin{theorem}[Theorem 3.2 in \cite{fissler2016multiq}, Extension of Theorem 2.1 in \cite{osband1985}]
+Let $\cf$ be a convex class of distribution functions on $\mathsf{O} \subseteq \R^d$. Let $T: \cf \to \mathsf{A} \subseteq \R^k$ be a surjective, elicitable and identifiable functional with a strict $\cf$-identification function $V: \mathsf{A} \times \mathsf{O} \to \R^k$ and a strictly $\cf$-consistent scoring function $S: \mathsf{A} \times \mathsf{O} \to \R$. If the assumptions (V1) and (S1) hold, then there exists a matrix-valued function $h: \mathrm{int}(\mathsf{A}) \to \R^{k \times k}$ such that for $l \in \{1, \ldots, k\}$
+\begin{align}
+\partial_l \bar{S}(x, F) = \sum_{m=1}^{k} h_{lm}(x) \bar{V}_m(x, F)
+\end{align}
+for all $x \in \mathrm{int}(\mathsf{A})$ and $F \in \cf$. If in addition, assumption (V2) holds, then $h$ is continuous. Under the additional assumptions (V3) and (S2), the function $h$ is locally Lipschitz continuous.
+\end{theorem}
+
+Theorem above establish necessary condition on the level of expected score $\bar{S}(x,F)$. If the class $\cf$ is rich enough (F1) and the scoring and identification function are smooth enough (VS1), we have the following necessary condition for $S$ which holds pointwise.
+
+\begin{prop}[Proposition 3.5 in \cite{fissler2016multiq}]
+Let $\cf$ be convex. Assume that $\mathrm{int}(\mathsf{A}) \subseteq \R^k$ is a star domain and let $T: \cf \to \mathsf{A}$ be a surjective, elicitable and identifiable functional with a strict $\cf$-identification function $V: \mathsf{A} \times \mathsf{O} \to \R^k$ and a strictly $\cf$-consistent scoring function $S: \mathsf{A} \times \mathsf{O} \to \R$. Suppose that assumptions (V1), (V2), (S1), (F1) and (VS1) hold. Let $h$ be the matrix valued function appearing at (3.2). Then, the scoring function $S$ is necessarily of the form
+\begin{align}
+S(x, y) = \sum_{r=1}^{k} \sum_{m=1}^{k} \int_{z_r}^{x_r} h_{rm}(x_1, \ldots, x_{r-1}, v, z_{r+1}, \ldots, z_k) \times V_m(x_1, \ldots, x_{r-1}, v, z_{r+1}, \ldots, z_k, y) \, dv + a(y)
+\end{align}
+for almost all $(x, y) \in \mathsf{A} \times \mathsf{O}$ for some star point $z = (z_1, \ldots, z_k) \in \mathrm{int}(\mathsf{A})$ and some $\cf$-integrable function $a: \mathsf{O} \to \R$. On the level of the expected score $\bar{S}(x, F)$, the equation holds for all $x \in \mathrm{int}(A)$, $F \in \hat{\cf}$.
+\end{prop}
+
+\paragraph{Assumption (V4).} Let assumption (V3) hold. For all $r \in \{1, \ldots, k\}$ and for all $t \in \mathrm{int}(\mathsf{A}) \cap T(\cf)$ there are $F_1, F_2 \in T^{-1}(\{t\})$ such that
+\[
+\partial_l \bar{V}_l(t, F_1) = \partial_l \bar{V}_l(t, F_2) \quad \forall l \in \{1, \ldots, k\} \setminus \{r\}, \qquad \partial_r \bar{V}_r(t, F_1) \neq \partial_r \bar{V}_r(t, F_2).
+\]
+
+Then, Proposition 4.1 and Corollary 4.2 in \cite{fissler2016multiq} shows that with additional assumption (V4) above, $h$ is necessarily diagonal.
+\begin{theorem}[Corollary 4.2 in \cite{fissler2016multiq}]
+Let $\cf$ be convex. Suppose that $T = (T_1, \ldots, T_k): \cf \to \mathsf{A}$ is a functional with 1-identifiable components having oriented strict $\cf$-identification functions $V_m: \mathsf{A_m} \times \mathsf{O} \to \R$. Assume the interior of $\mathsf{A}:=T(\cf) \subseteq \mathsf{A}_1 \times \cdots \times \mathsf{A}_k$ is a star domain and that assumptions (V1), (V3), (V4), (S2), (F1) and (VS1) hold. Then, a scoring function $S: \mathsf{A} \times \mathsf{O} \to \R$ is strictly $\cf$-consistent for $T$ if and only if it is of the form
+\begin{align}
+    S(x_1, \ldots, x_k, y) = \sum_{m=1}^{k} S_m(x_m, y),
+\end{align}
+for almost all $(x,y) \in \mathsf{A} \times \mathsf{O}$, where $S_m: \mathsf{A}_m \times \mathsf{O} \to \R$, $m \in \{1, \ldots, k\}$, are strictly $\cf$-consistent scoring functions for $T_m$.
+\end{theorem}

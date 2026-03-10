@@ -1,0 +1,37 @@
+
+\section{Pessimistic result in multiclass case}
+\paragraph{Treating outcomes independently}
+Given a sequence of multiclass predictions $\bp = (p_1,...,p_T ) \in \Delta_K^T$, the simplex, for each outcome $i \in [K]$, let $\bp^{(i)} =(p_1^{(i)},...,p_T^{(i)}) \in [0, 1]^T$ be the sequence of binary predictions formed via $p_t^{(i)} = (p_t)_i$. Similarly, $x_t^{(i)} = \indi{x_t = i}$.
+\begin{theorem}[Theorem 18 in \cite{kleinberg2023ucal}]
+    There exists a sequence of $T$ multiclass (for $K = 3$) events $\by$ and predictions $\bp$ such that $\cal(p(i), x(i)) = 0$ for each $i\in [K]$, but $\ucal(\bp, \by) = \Omega(T)$.
+\end{theorem}
+Thus the class of \textit{separable} scoring rules – scoring rules of the form $\ell(\bp, \by) = \sum_{i=1}^K \ell_i(\bp(i), \by(i))$ for some binary scoring rules $\ell_i$ – are not a valid answer.
+
+\paragraph{Small generating basis for multiclass scoring rules}
+\begin{theorem}
+Fix a $K \geq 4$ and a finite-dimensional space of parameters, $\Theta \subseteq \R^N$ . Let $\cl' \subseteq \cl$ be a familyof bounded loss functions that are parameterized by vectors $\theta \in \Theta$ such that for any $p \in \Delta K$, both the value of $\ell_\theta(p)$ and a choice of subgradient $\nabla\ell_\theta(p)$ are piecewise locally Lipschitz functions of $\theta$. Then there exists a loss function $\ell \in \cl$ such that it is impossible to write $\ell$ in the form 
+\[
+\ell = \int_{\theta \in \Theta} \mu(\theta)\ell_\theta d\theta
+\]
+for any finite measure $\mu$ over $\Theta$.
+\end{theorem}
+
+Despite these barriers, \cite{kleinberg2023ucal} demonstrate a randomized algorithm for $O(K\sqrt{T})$ \textit{pseudo}-U-calibration error. Algorithm \ref{alg:FFTPL} bounds $\sup_{\ell\in\cl} \E[\reg_\ell(\bp,\by)]$ instead of original U-calibration error $\E[\sup_{\ell\in\cl}\reg_\ell(\bp,\by)]$.
+
+\begin{algorithm}
+\caption{\textsc{ForecastFTPL}}\label{alg:FFTPL}
+\begin{algorithmic}[1]
+\For{$t = 1$ to $T$}
+    \For{each $i \in [K]$}
+        \State Sample $n_{t,i}$ i.i.d. from the uniform distribution over $\{0, 1, 2, \ldots, \lfloor \sqrt{T} \rfloor\}$.
+    \EndFor
+    \For{each $i \in [K]$}
+        \State Let $\hat{X}_{t,i} = n_{t,i} + \sum_{s=1}^{t-1} \mathbf{1}(x_s = i)$.
+    \EndFor
+    \State Output the prediction $p_t \in \Delta_K$ defined by
+    \[
+        p_{t,i} = \frac{\hat{X}_{t,i}}{\sum_{j=1}^{K} \hat{X}_{t,j}}.
+    \]
+\EndFor
+\end{algorithmic}
+\end{algorithm}
