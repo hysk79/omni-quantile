@@ -225,6 +225,7 @@ def multi_q_minmax_solver(
     theta_weights: np.ndarray,  # (N, m)
     thetas: np.ndarray,  # (m,)
     forecast_values: np.ndarray,  # (N, m)
+    tol: float = 1e-10,
 ) -> dict:
     """
     Solve the minmax problem for a single quantile level.
@@ -239,7 +240,8 @@ def multi_q_minmax_solver(
     # First find V_n and j_n^*
     Vn_computer = VnComputer(weights = theta_weights, 
                             thetas = thetas, 
-                            forecast_values = forecast_values
+                            forecast_values = forecast_values,
+                            tol=tol,
                             )
     Vn_values, j_optimal =  Vn_computer.compute_all_Vn()
 
@@ -254,6 +256,7 @@ def multi_q_minmax_solver(
                             eq_value=Vn_values[n] - Vn_values[n+1],     
                             j_opt_pre=j_optimal[n],
                             j_opt_n=j_optimal[n+1],
+                            tol=tol,
                             )
         phat_dict_list.append(phat_dict)
 

@@ -10,3 +10,4 @@ paper/*.out
 paper/*.toc
 paper/build/
 data/
+results/
