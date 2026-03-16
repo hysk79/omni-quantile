@@ -1,4 +1,139 @@
 \section{Experiments}\label{sec:experiments}
-\subsection{Convergence of omniprediction error}
-\subsection{Prediction quality of the omniprediction algorithm}
-\subsection{Case where omniprediction shines}
+We use COVID-19 hospitalization data from \hyperlink{https://delphi.cmu.edu/forecast-eval/}{DelPhi Group's Forecast Evaluation Dashboard}. The data contains $1$, $2$, $3$, $4$- week ahead forecasts from $20+$ forecasters. {\color{blue} citations}. With these \textit{base forecasters}, we run Algorithm \ref{alg:omni-twoplayer_online_multi_q} and compare the output with that from the ensemble model provided by DelPhi Group, and also with other online algorithms. With base forecasters $\{\hat{f}_j\}_{j=1}^F$ that provide $\{\tau_n\}_{n=1}^N$-level quantile forecasts $\{\hat{f}_j^n(t)\}_{n=1}^N$ for each time $t$, the omniprediction error is given by
+
+\begin{align}\label{eq:omni-multi-q-error-discrete}
+\sup_{S \in \cs,\, j \in [F]} \frac{1}{T} \sum_{n=1}^N \sum_{t=1}^T \E_{p \sim \hat{P}_t^n} [S(p, Y_t)] - \E[S(\hat{f}_j^n(t), Y_t)] 
+% \leq \co\left(\sqrt{\frac{\log (mNF)}{T}}\right).
+\end{align}
+
+\subsection{Expriment settings}
+\subsubsection{Hyperparameters}
+We use the following settings for the experiments:
+\begin{itemize}
+    \item Dates: 2021-02-23 to 2023-06-05 (119 weeks) 
+    \item Number of quantile levels $N = 23$: 
+    \begin{multline*}
+      [0.01,~0.025,~0.05,~0.1,~0.15,~0.2,~0.25,~0.3,~0.35,~0.4,~0.45,~0.5, \\
+      0.55,~0.6,~0.65,~0.7,~0.75,~0.8,~0.85,~0.9,~0.95,~0.975,~0.99]
+    \end{multline*}
+    \item Number of base forecasters $F = 12$: \texttt{[CU-select, GT-DeepCOVID, Karlen-pypm, JHU\_IDD-CovidSP, MOBS-GLEAM\_COVID, USC-SI\_kJalpha, JHUAPL-Bucky, JHUAPL-SLPHospEns, JHUAPL-Gecko, COVIDhub-baseline, COVIDhub-4\_week\_ensemble, COVIDhub-trained\_ensemble]}
+    % \item Discretization unit: $100$ for daily data (Section \ref{subsec:daily_data}), $1,000$ for weekly data (Section \ref{subsec:weekly_data})
+    \item Discretization unit: $500$ (The base forecast values varies from $0$ to $1,301,622$)
+    \item Each experiment is run $10$ times with different random seeds.
+\end{itemize}
+
+There are two separate learning rates appear in Algorithm \ref{alg:omni-twoplayer_online_multi_q}: $\eta_w$ and $\eta_f$. $\eta_w$ updates the weights $w_i^n$ on each elementary score functions $S_i^n$, where the weighed sum of elementary scores is the objective function of minimax in every timestamp. $\eta_f$ is the learning rate for the forecaster selection $v_{i,j}$, updating the best forecaster for each elementary score function in each iteration. Due to Theorem \ref{thm:omni-twoplayer_online_multi_q}, the learning rate $\eta_w$ should be set to $\eta_w = O(\sqrt{\frac{\log (mNF)}{T}})$ and $\eta_f$ should be set to $\eta_f = O(\sqrt{\frac{\log F}{T}})$. We try different multiples of theoretical values of $\eta_w$ and $\eta_f$ to see how the performance of the omniprediction algorithm varies.
+\begin{enumerate}
+    \item $\eta_w$ multiplier: $0.5, 1, 2, 4$
+    \item $\eta_f$ multiplier: $1, 2, 4, 8, 16$
+\end{enumerate}
+Hereafter, we simply write $\eta_w = C$ for $\eta_w = C \sqrt{\frac{\log (mNF)}{T}}$ and $\eta_f = C$ for $\eta_f =  2C \sqrt{\frac{\log F}{T}}$.
+
+\subsubsection{Other online algorithms to compare}
+We consider two online algorithms for comparison. 
+\ql applies the Hedge algorithm to optimize the aggregate quantile loss, whereas \pb applies the Hedge algorithm to optimize the pinball loss at each quantile level separately. 
+
+Specifically, \ql uses the following loss function at time $t$:
+\[
+\ell_{\ql}(y_t, \hat{f}_j(t)) = \sum_{n=1}^N \rho_{\tau_n}(y_t - \hat{f}_j^n(t)), \quad \forall j \in [F],
+\]
+where $\rho_{\tau_n}(x) = \tau_n |x| \one(x \geq 0) + (1-\tau_n) |x| \one(x < 0)$ denotes the pinball loss at quantile level $\tau_n$. 
+The algorithm then selects a single base forecast to estimate the quantiles at all quantile levels.
+
+In contrast, \pb runs the Hedge algorithm separately for each quantile level. 
+For each $\tau_n$, $n \in [N]$, \pb uses the loss
+\[
+\ell_{\pb, n}(y_t, \hat{f}_j^n(t)) = \rho_{\tau_n}(y_t - \hat{f}_j^n(t)), \quad \forall j \in [F], \forall n \in [N].
+\]
+It then selects a base forecast for each quantile level to predict the corresponding quantile. Note that the resulting vector of quantile estimates may exhibit quantile crossing. For a fair comparison, we evaluate \ql, \pb, and the omniprediction algorithm using the same value of $\eta_f$. That is, for each value of $\eta_f$, we compare the outputs of all three algorithms using that value.
+
+Lastly, we compare our omniprediction algorithm output with one of base forecasters, \textbf{COVIDhub-trained\_ensemble} (COVIDhub-ens). COVIDhub-ens is the ensemble model provided by DelPhi Group.
+
+\subsection{Trace of omniprediction error and quantile loss} 
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=.95\textwidth]{../fig/omni_error_trace.png}
+    \caption{Omniprediction error \eqref{eq:omni-multi-q-error-discrete} over time with $\eta_w=\eta_f=1$. Not only omniprediction algorithm (Theorem \ref{thm:omni-twoplayer_online_multi_q}) but other three algorithms also converge to $0$ (no theoretical guarantee). {\color{blue} $\sqrt{1/T}$ curve check}}
+    \label{fig:omni_error_convergence}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=.95\textwidth]{../fig/ql_loss_trace.png}
+    \caption{Quantile loss over time with $\eta_w=\eta_f=1$. Interestingly, omniprediction algorithm achieves lower quantile loss than other three algorithms, although QL-opt and Pinball-opt more directly optimize the quantile loss.}
+    \label{fig:ql_loss_trace}
+\end{figure}
+
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=.95\textwidth]{../fig/all_q_estimates.png}
+    \caption{The plot shows all the quantile estimates from each algorithm for 4-week ahead prediction task. Algorithm complexity get higher from left to right. We plot colored bands where the lightest opacity connects the 0.01 and 0.99 level forecasts, the next lightest connects the 0.025 and 0.975 level forecasts, and so on. The black line represents the true value.}
+    \label{fig:all_q_estimates}
+\end{figure}
+
+
+\newpage
+\subsection{Sensitivity to learning rates}
+\subsubsection{Sensitivity to $\eta_w$}
+See Figure \ref{fig:sens_etaw} for the results.
+\begin{figure}[h]
+    \begin{subfigure}[b]{0.95\textwidth}
+        \centering
+        \includegraphics[width=.95\textwidth]{../fig/sens_etaw_1wk.png}
+        \caption{1-week ahead prediction}
+        \label{fig:sens_etaf_1wk}
+    \end{subfigure}
+    \begin{subfigure}[b]{0.95\textwidth}
+        \centering
+        \includegraphics[width=.95\textwidth]{../fig/sens_etaw_2wk.png}
+        \caption{2-week ahead prediction}
+        \label{fig:sens_etaf_2wk}
+    \end{subfigure}
+    \begin{subfigure}[b]{0.95\textwidth}
+        \centering
+        \includegraphics[width=.95\textwidth]{../fig/sens_etaw_3wk.png}
+        \caption{3-week ahead prediction}
+        \label{fig:sens_etaf_3wk}
+    \end{subfigure}
+    \begin{subfigure}[b]{0.95\textwidth}
+        \centering
+        \includegraphics[width=.95\textwidth]{../fig/sens_etaw_4wk.png}
+        \caption{4-week ahead prediction}
+        \label{fig:sens_etaf_4wk}
+    \end{subfigure}
+    \caption{Omniprediction error and quantile loss sensitivity to $\eta_w$. The plot shows the mean and standard deviation across $10$ runs of omniprediction error and quantile loss at time $T$ (last timestamp). Fixed $\eta_f=2$. The omniprediction algorithm achieves lower omniprediction error and quantile loss than other three algorithms, across different $\eta_w$ values and datasets}
+    \label{fig:sens_etaw}
+\end{figure}
+
+\subsubsection{Sensitivity to $\eta_f$}
+See Figure \ref{fig:sens_etaf} for the results.
+\begin{figure}[h]
+    \begin{subfigure}[b]{0.95\textwidth}
+        \centering
+        \includegraphics[width=.95\textwidth]{../fig/sens_etaf_1wk.png}
+        \caption{1-week ahead prediction}
+        \label{fig:sens_etaf_1wk}
+    \end{subfigure}
+    \begin{subfigure}[b]{0.95\textwidth}
+        \centering
+        \includegraphics[width=.95\textwidth]{../fig/sens_etaf_2wk.png}
+        \caption{2-week ahead prediction}
+        \label{fig:sens_etaf_2wk}
+    \end{subfigure}
+    \begin{subfigure}[b]{0.95\textwidth}
+        \centering
+        \includegraphics[width=.95\textwidth]{../fig/sens_etaf_3wk.png}
+        \caption{3-week ahead prediction}
+        \label{fig:sens_etaf_3wk}
+    \end{subfigure}
+    \begin{subfigure}[b]{0.95\textwidth}
+        \centering
+        \includegraphics[width=.95\textwidth]{../fig/sens_etaf_4wk.png}
+        \caption{4-week ahead prediction}
+        \label{fig:sens_etaf_4wk}
+    \end{subfigure}
+    \caption{Omniprediction error and quantile loss sensitivity to $\eta_f$. The plot shows the mean and standard deviation across $10$ runs of omniprediction error and quantile loss at time $T$ (last timestamp). Fixed $\eta_w=1$. The omniprediction algorithm achieves lower omniprediction error and quantile loss than other three algorithms, across different $\eta_f$ values and datasets}
+    \label{fig:sens_etaf}
+\end{figure}

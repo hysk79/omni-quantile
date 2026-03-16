@@ -1,5 +1,11 @@
 \section{Omniprediction for multiple quantile level forecasts}\label{sec:multi_q}
-In this section, we extend the result from Section \ref{sec:single_q} to multiple quantile levels. Section \ref{subsec:decomp_multi_q} discusses the previous result from \cite{fissler2016multiq} on decomposition of consistent scoring rules for multiple quantile levels. Section \ref{subsec:separate_multi_q} shows the cases where post-sorting after solving separate minimax programs for each quantile level works and the cases where it fails, which necessitates the need for solving the minimax program \eqref{eq:omni-twoplayer-minimax} jointly across all quantile levels. Section \ref{subsec:omni_multi_q} provides a closed form solution to the minimax program \eqref{eq:omni-twoplayer-minimax} for multiple quantile levels. Finally, Section \ref{subsec:omni_multi_q_online} puts the results together and provides a sample efficient algorithm for omniprediction of multiple quantile level forecasts.
+In this section, we extend the result from Section \ref{sec:single_q} to multiple quantile levels. To avoid redundancy, we mainly provide online algorithm for omniprediction of multiple quantile level forecasts. Batch version can be straightforwardly extended from the single quantile level case. The omniprediction objective we want to minimize is given by
+\[
+\sup_{S \in \cs,\, f \in \cf} \frac{1}{T} \sum_{t=1}^T \E_{p \sim \hat{P}} [S(p, Y_t)] - \E[S(f_t, Y_t)]
+\]
+where $\cs$ is the class of \textit{all} scoring functions that are consistent for the multiple quantile levels and $\cf$ is a set of competitors.
+
+Section \ref{subsec:decomp_multi_q} discusses the previous result from \cite{fissler2016multiq} on decomposition of consistent scoring rules for multiple quantile levels. Section \ref{subsec:separate_multi_q} shows the cases where post-sorting after solving separate minimax programs for each quantile level works and the cases where it fails, which necessitates the need for solving the minimax program \eqref{eq:omni-twoplayer-minimax} jointly across all quantile levels. Section \ref{subsec:omni_multi_q} provides a closed form solution to the minimax program \eqref{eq:omni-twoplayer-minimax} for multiple quantile levels. Finally, Section \ref{subsec:omni_multi_q_online} puts the results together and provides a sample efficient algorithm for omniprediction of multiple quantile level forecasts.
 
 \cite{fissler2016multiq} proved that a consistent (proper) loss for multiple quantile levels can be written as a weighted sum of consistent (proper) loss for each quantile levels, under mild regularity conditions.
 
@@ -137,13 +143,17 @@ Note that $g_i(x_1) - g_i(x_2) \geq 0$ since $g_i$ is non-decreasing.
 
 
 
-\subsection{Solution for joint minimax program}
+
+
+
+
+\subsection{Solution for joint minimax program} \label{subsec:omni_multi_q}
 Simlarly to Section \ref{subsec:omni_single_q}, this subsection provides a closed form solution to the minimax program \eqref{eq:omni-twoplayer-minimax}. 
-Due to Corollary 4.2 in \cite{fissler2016multiq}, a loss function that is consistent for multiple quantile levels can be written as a weighted sum of consistent (proper) loss for each quantile levels, under mild regularity conditions. We first consider a loss function that is consistent for two quantile levels $\alpha$ and $\beta$.
-\begin{align*}
-  S(x,y) = \int_{-\infty}^{\infty} S_{\alpha,\theta}(x,y) dH_\alpha(\theta) + \int_{-\infty}^{\infty} S_{\beta,\theta}(x,y) dH_\beta(\theta),
-\end{align*}
-where $S_{\tau, \theta} = (\one(y<x)-\tau)(\one(\theta<x)-\one(\theta<y))$ for $\tau = \alpha, \beta$ as defined previously.
+Due to Corollary 4.2 in \cite{fissler2016multiq}, a loss function that is consistent for multiple quantile levels can be written as a weighted sum of consistent (proper) loss for each quantile levels, under mild regularity conditions. For a set of quantile levels $\tau_1 < \tau_2 < ... < \tau_N$ and positive measures $\{H_{\tau_n}\}_{n=1}^N$, any scoring function that is consistent for the multiple quantile levels can be written as
+\begin{align}\label{eq:multi_q_consistent_score}
+  S(x,y) = \sum_{n=1}^N \int_{-\infty}^{\infty} S_i^n(x,y) dH_{\tau_n}(\theta),
+\end{align}
+where $S_i^n(x,y) = (\one(y<x)-\tau_n)(\one(\theta_i<x)-\one(\theta_i<y))$ for $n \in [N]$ and $i \in \{0, \ldots, m-1\}$.
 
 
 % Similarly to previous section, we define forecasts $\{\hat{f}_{\theta_i}^\tau\}_{i=0}^{m-1}$ that empirically minimized the losses $\{S_{\tau, \theta_i}\}_{i=0}^{m-1}$ for $\tau=\alpha, \beta$. For given $P \in \Delta_m$, denote the $\tau$-level quantile of $P$ as $P_\tau$. Then, consider $\cd(\Delta_m)$, the set of distributions over forecast $P \in \Delta_m$. The joint minimax program we want to solve is
@@ -266,18 +276,19 @@ where $S_{\tau, \theta} = (\one(y<x)-\tau)(\one(\theta<x)-\one(\theta<y))$ for $
 
 
 % \subsection{Solving joint minimax program for arbitrary number of quantile levels}
-Now we extend the result to the case of arbitrary number of quantile levels. We denote $N$ as the number of quantile levels and $\tau_1 < \tau_2 < ... < \tau_N$ as the quantile levels. We also denote $\hat{f}_i^n$ for $i =0,...,m\!-\!1$ and $n \in [N]$, which is a $\tau_n$-level quantile forecast. The minimax program is given by
+% Now we extend the result to the case of arbitrary number of quantile levels. We denote $N$ as the number of quantile levels and $\tau_1 < \tau_2 < ... < \tau_N$ as the quantile levels. 
+
+In a similar vein to the notation in Section \ref{subsec:omni_single_q}, let $\hat{f}_i^n$ be the best forecast in $\cf$ that minimizes the losses $\{S_i^n\}$ for $i =0,...,m\!-\!1$ and $n \in [N]$. {\color{blue} Omitted details of discretization etc. that is straightforward extension from single quantile level case} Then, the minimax program for multiple quantile level omniprediction is given by
 
 \[
-\min_{\tilde{P} \in \cd(\Delta_m)} \max_{P_y \in \Delta_m} \sum_{n=1}^N \sum_{i=0}^{m-1} w_i^n \E_{P\sim \tilde{P}, Y \sim P_y}[S_{\tau_n,\theta_i}(q_{\tau_n}(P),Y) - S_{\tau_n,\theta_i}(\hat{f}_i^n,Y)].
+\min_{\tilde{P} \in \cd(\Delta_m)} \max_{P_y \in \Delta_m} \sum_{n=1}^N \sum_{i=0}^{m-1} w_i^n \E_{P\sim \tilde{P}, Y \sim P_y}[S_i^n(q_{\tau_n}(P),Y) - S_i^n(\hat{f}_i^n(t),Y)],
 \]
-
-We rewrite the program as follows:
+where $q_{\tau_n}(P)$ is the $\tau_n$-level quantile of $P$ and $S_i^n(x, Y) = (\one(Y < x)-\tau_n)(\one(\theta_i<x)-\one(\theta_i<Y))$ as defined previously. We can rewrite the program as follows:
 \[
-\min_{P_1, P_2, ..., P_N \in \Delta_m} \max_{P_y \in \Delta_m} \sum_{n=1}^N \sum_{i=0}^{m-1} w_i^n \E_{p_n \sim P_
-, Y \sim P_y}[S_{\tau_n,\theta_i}(p_n,Y) - S_{\tau_n,\theta_i}(\hat{f}_i^n,Y)],
+\min_{P_1, P_2, ..., P_N \in \Delta_m} \max_{P_y \in \Delta_m} \sum_{n=1}^N \sum_{i=0}^{m-1} w_i^n \E_{p_n \sim P_n
+, Y \sim P_y}[S_i^n(p_n,Y) - S_i^n(\hat{f}_i^n,Y)],
 \]
-subject to the constraint $p_n \leq p_{n+1}$ for $n = 1, ..., N-1$, where $S_{\tau_n,\theta_i}(x, Y) = (\one(Y < x)-\tau_n)(\one(\theta_i<x)-\one(\theta_i<Y))$ as defined previously.
+with the constraint that the joint distribution ($P_1, P_2, ..., P_N$) always satisfies the ordering of the samples $p_1 \leq p_2 \leq ... \leq p_N$.
 
 Before getting into the minimax solution, we first prove the following lemmas.
 
@@ -370,7 +381,7 @@ With such $k_n$, we define $P_n^*$ with $C_n = \frac{1}{w_{k_n}^n} \left( \sum_{
 
 
 Now we provide the solution to the minimax program \eqref{eq:omni-twoplayer-minimax}.
-\begin{theorem}
+\begin{theorem}\label{thm:minimax_negative_multi_q}
 Given quantile levels $\tau_1 < \tau_2 < ... < \tau_N$, quantile forecasts $\hat{f}_i^n$ for $i =0,...,m\!-\!1$ and $n \in [N]$, define $V_n$ $n \in [N-1]$ as in equations \eqref{eq:Vn_def}, with $V_0 = V_N := 0$. Let $\{j_n^*\}_{n=1}^{N-1}$ be a sorted sequence of indices that minimizes the $V_n$ for $n \in [N-1]$ with $j_0^* = 0$ and $j_N^* = m$ where the existence of the sequence is guaranteed by Lemma \ref{lem:jn_sort}. 
 \smallskip \\
 Then, $P_n^*$ for $n \in [N]$ given by \eqref{eq:Pn_def} with 
@@ -461,5 +472,64 @@ where the second from the last equality used the fourth condition in Lemma \ref{
 \end{proof}
 
 
-\subsection{Sample efficient algorithm for omniprediction of multiple quantile level forecasts}\label{subsec:omni_multi_q}
-Straightforward extension, to be added. Both algorithm and guarantee.
+\subsection{Sample efficient algorithm for omniprediction of multiple quantile level forecasts}\label{subsec:omni_multi_q_online}
+
+\begin{algorithm}
+  \caption{Two-player game based multiple quantile level online omniprediction} \label{alg:omni-twoplayer_online_multi_q}
+  \begin{algorithmic}[1]
+  \State \textbf{Data:} Data stream $\{Y_t\}_{t=1}^T$, quantile levels $\tau_1 < \tau_2 < ... < \tau_N$, hyperparameters $m, F \in \mathbb{N}$, $\eta_w, \eta_f > 0$, base forecaster predictions $\hat{f}_j^n(t)$: $\tau_n$-level quantile estimate of $f_j$ for $j \in [F]$ and $n \in [N]$;
+  \State For $t=1$,$w_i^n(t) = \frac{1}{mN}$, $\hat{f}_i^n(t) = f_1^n(t)$, for all $i \in \{0, \ldots, m-1\}$ and $n \in [N]$;
+  \State $v_{i,j}^n(1) = \frac{1}{F}$, for all $i \in \{0, \ldots, m-1\}$ and $j \in \{1, \ldots, F\}$ and $n \in [N]$;
+  \For{$t = 1, \ldots, n$}
+    \State \textbf{1) Make prediction at time $t$}:
+      \State Define $V_0 = V_N = 0$, $j_0^* = 0$, $j_N^* = m$;
+      \State Define $\one_i^s(t) = \indi{\theta_i < \hat{f}_i^s(t)}$ for $i \in \{0, \ldots, m-1\}$ and $s \in [N]$.
+      \For{$n=1, \ldots, N-1$}
+      \State Compute $V_n(j)$ for $j \in [m]$:
+        \(
+        V_n(j) = \sum_{i=j}^{m-1} \sum_{s=1}^{n} w_i^s \one_i^s(t) + \sum_{i=0}^{j-1} \sum_{s=n+1}^{N}  w_i^s (1 - \one_i^s(t))
+        \)
+      \State Compute $V_n$ and $j_n^*$:
+        \begin{align*}
+          V_n = \min_{j \in [m]} V_n(j), \qquad
+          j_n^* = \min\left\{j_{n-1}^* \leq j \leq m \mid V_n(j) = V_n \right\}
+        \end{align*}
+      \EndFor \vspace{-0.2cm}\\
+      \For{$n=1, \ldots, N$}
+        \If{$V_n(j_{n-1}^*) = V_n(j_n^*)$}
+          \State $\hat{P}_t^n = \delta_{j_{n-1}^*/m}$;
+        \Else
+          \State Define $B_k := \sum_{i=0}^{k-1} w_i^n(t) - \sum_{i=0}^{m-1}w_i^n(t) \one_i^n(t)$
+          \State Find $j_{n-1}^* \leq k_n < j_n^*$ s.t. $B_{k_n} < V_{n-1} - V_n \leq B_{k_n+1}$ (Existence proved in Lemma \ref{lem:Pn_def})
+          \State $\hat{P}_t^n = (1-C_n)\delta_{k_n/m} + C_n\delta_{((k_n+1)/m)}$, where $C_n = \left( V_{n-1} - V_n - B_{k_n} \right) / w_{k_n}^n$
+        \EndIf
+      \EndFor
+      \State \textbf{Output} $\hat{P}_t = \{\hat{P}_t^n\}_{n=1}^N$;  \vspace{-0.1cm}\\
+      \State \textbf{2) Update the weights for each $S_{i}^n = (\one(y<x)-\tau_n)(\one(\theta_i<x)-\one(\theta_i<y))$}:
+          \State $w_i^n(t+1) = \frac{w_i^n(t) \exp\bigl(\eta \big(\mathbb{E}_{p \sim \hat{P}_t^n}[S_i^n(p, Y_t)] 
+          - S_i^n(\hat{f}_i^n(t), Y_t)\big)\bigr)}{\sum_{i=0}^{m-1} \sum_{n=1}^N w_i^n(t) \exp\bigl(\eta \big(\mathbb{E}_{p \sim \hat{P}_t^n}[S_i^n(p, Y_t)] - S_i^n(\hat{f}_i^n(t), Y_t)\big)\bigr)}, \forall n \in [N], i \in \{0, \ldots, m-1\};$ \vspace{-0.1cm}\\
+      \State \textbf{3) Update the best competitor function for each $S_{i}^n$}:
+      \State $v_{i,j}^n(t+1) = \frac{v_{i,j}^n(t) \exp\bigl(-\eta_f S_i^n(\hat{f}_j^n(t), Y_t)\bigr)}{\sum_{j=1}^F v_{i,j}^n(t) \exp\bigl(-\eta_f S_i^n(\hat{f}_j^n(t), Y_t)\bigr)}, \quad \forall j \in [F], n \in [N], i \in \{0, \ldots, m-1\};$
+      \For{$n = 1, \ldots, N$}
+        \For{$i = 0, \ldots, m-1$}
+          \State Sample $j_i^n(t+1) \in [F] \sim v_{i,\cdot}^n(t+1)$ and update $\hat{f}_i^n(t+1) = f_{j_i^n(t+1)}^n(t+1)$;
+        \EndFor
+      \EndFor
+  \EndFor
+  \end{algorithmic}
+  \end{algorithm}
+  
+
+
+\begin{theorem}
+  \label{thm:omni-twoplayer_online_multi_q}
+  For a set of quantile levels $\tau_1 < \tau_2 < ... < \tau_N$, let $\cs$ denote the class of scoring functions with representation \eqref{eq:multi_q_consistent_loss} with positive measures $\{H_{\tau_n}\}_{n=1}^N$ such that $H_{\tau_n}(\R) \leq 1, \forall n \in [N]$ (the set of \textit{all} scoring functions that are consistent for the multiple quantile levels under mild regularity conditions). Consider a class of competitors $\cf$ where each forecaster $f \in \cf$ provides $\{\tau_n\}_{n=1}^N$-level quantile forecasts $\{f^n(t)\}_{n=1}^N$. With the target values $Y_t$, forecaster predictions $f^n(t)$ for $t \in [T], n \in [N], f \in \cf$ each taking values in a discretized grid of size $m$, and the learning rate $\eta_w = O(\sqrt{\frac{\log (mN)}{T}})$ and $\eta_f = O(\sqrt{\frac{\log |\cf|}{T}})$, the output $\hat{P}_t = \{\hat{P}_t^n\}_{n=1}^N$ from Algorithm \ref{alg:omni-twoplayer_online_multi_q} achieves the following omniprediction error:
+  \begin{align*}
+  \sup_{S \in \cs,\, f \in \cf} \frac{1}{T} \sum_{n=1}^N \sum_{t=1}^T \E_{p \sim \hat{P}_t^n} [S(p, Y_t)] - \E[S(f^n(t), Y_t)]
+  \leq O\left(\sqrt{\frac{\log mN|\cf|}{T}}\right)
+  \end{align*}
+\end{theorem}
+
+\begin{proof}
+  Straightforward extension of Theorem \ref{thm:omni-twoplayer_online_q}, using theorem \ref{thm:minimax_negative_multi_q}.
+\end{proof}

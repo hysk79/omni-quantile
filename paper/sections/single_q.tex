@@ -1,6 +1,13 @@
 \section{Omniprediction for single quantile level forecasts}\label{sec:single_q}
+
+This section provides a sample efficient algorithm for omniprediction of single quantile level forecasts, both in batch and online settings. The omniprediction objective we want to minimize is given by
+\begin{align*}
+  \sup_{S \in S_\alpha,\, f \in \cf} \frac{1}{T} \sum_{t=1}^T \E_{p \sim \hat{P}(X_t)} [S(p, Y_t)] - \E[S(f(X_t), Y_t)]
+\end{align*}
+where $S_\alpha$ is the class of \textit{all} scoring functions that are consistent for the $\alpha$-level quantile functional and $\cf$ is a set of competitors.
+
 Section \ref{subsec:decomp_single_q} discusses the previous result from \cite{ehm2016binarydecomp} on decomposition of consistent scoring rules, which is an analogous notion of propriety for single quantile forecasts. 
-Using this, we introduce a new algorithm that achieves $\co(1/\sqrt{T})$ {\color{red}(CHECK)} omniprediction error bound. To do so, Section \ref{subsec:discretization} first discusses the discretization of predictions and forecasts that induces low (no) discretization error. 
+Using this, we introduce a new algorithm that achieves $\co(\sqrt{\log(mF)/T})$ omniprediction error bound, where $m$ is the number of discretization points and $F$ is the number of base forecasters. To do so, Section \ref{subsec:discretization} first discusses the discretization of predictions and forecasts that induces low (no) discretization error. 
 Then, Section \ref{subsec:omni_single_q} states the sample efficient algorithm for omniprediction of single quantile forecasts, both in batch and online settings.
 
 
@@ -145,7 +152,7 @@ This subsection provides a closed form solution for the minimax program \eqref{e
 to obtain a single quantile level forecast version of Algorithm \ref{alg:omni-twoplayer}.
 
 
-Now, we define forecasts $\{\hat{f}_{\theta_i}\}_{i=0}^{m-1}$ that empirically minimized the losses $\{S_{\alpha, \theta_i}\}_{i=0}^{m-1}$. Letting $\Delta_m$ denote the set of probability distributions over $\{0, \frac{1}{m}, \frac{2}{m}, ...,1\}$, the following holds due to von Neumann's minimax theorem. Note that the expectation is linear in both $p$ and $Y$ and that $\Delta_m$ is compact convex.
+Now, we denote forecasts $\{\hat{f}_{\theta_i}\}_{i=0}^{m-1}$ be the forecast that minimizes the losses $\{S_{\alpha, \theta_i}\}_{i=0}^{m-1}$. Letting $\Delta_m$ denote the set of probability distributions over $\{0, \frac{1}{m}, \frac{2}{m}, ...,1\}$, the following holds due to von Neumann's minimax theorem. Note that the expectation is linear in both $p$ and $Y$ and that $\Delta_m$ is compact convex.
 \begin{lemma}\label{lem:minimax_single_q_neg}
 \[
 \min_{P \in \Delta_m} \max_{P_y \in \Delta_m} \sum_{i=0}^{m-1} w_i\E_{p\sim P, Y \sim P_y}[S_{\alpha,\theta_i}(p,Y) - S_{\alpha,\theta_i}(\hat{f}_{\theta_i},Y)] 
@@ -255,12 +262,12 @@ which does not depend on $P$. Thus, $O(P^*, P_y^*) = \min_P O(P, P_y^*)$.
 \begin{algorithm}
   \caption{Two-player game based single quantile omniprediction (fully online version)} \label{alg:omni-twoplayer_online_q}
   \begin{algorithmic}[1]
-  \State \textbf{Data:} Data stream $\{(X_t, Y_t)\}_{t=1}^\infty$, hyperparameters $m, F \in \mathbb{N}$, $\eta_w, \eta_f > 0$, competitor function class $\cf = \{f_j\}_{j=1}^{F}$.
+  \State \textbf{Data:} Data stream $\{Y_t\}_{t=1}^T$, hyperparameters $m, F \in \mathbb{N}$, $\eta_w, \eta_f > 0$, competitor function class $\cf = \{f_j\}_{j=1}^{F}$.
   \State For $t=1$,$w_i(t) = \frac{1}{m}$, $\hat{f}_{\theta_i}(t) = f_1$, for all $i \in \{0, \ldots, m-1\}$;
   \State $v_{i,j}(1) = \frac{1}{F}$, for all $i \in \{0, \ldots, m-1\}$, $j \in \{1, \ldots, F\}$;
-  \For{$t = 1, \ldots, n$}
+  \For{$t = 1, \ldots, T$}
     \State \textbf{1) Make prediction at time $t$}:
-    \State $B_k := \sum_{i=0}^{k-1} w_i(t) - \sum_{i=0}^{m-1}w_i(t) \one(\theta_i < \hat{f}_{\theta_i}(t)(X_t))$, $\quad k^* = \max\{k: B_k \leq 0\}$
+    \State $B_k := \sum_{i=0}^{k-1} w_i(t) - \sum_{i=0}^{m-1}w_i(t) \one(\theta_i < \hat{f}_{\theta_i}(t))$, $\quad k^* = \max\{k: B_k \leq 0\}$
       \State \textbf{Output}
       \makebox[0pt][l]{$\displaystyle
           \hat{P}_t = \frac{B_{k^*+1}}{B_{k^*+1} + |B_{k^*}|}\delta_{\frac{k^*}{m}} +
@@ -268,9 +275,9 @@ which does not depend on $P$. Thus, $O(P^*, P_y^*) = \min_P O(P, P_y^*)$.
       } \vspace{-0.1cm}\\
       \State \textbf{2) Update the weights for each $S_{\theta_i}$}:
           \State $w_i(t+1) \propto w_i(t) \exp\bigl(\eta \big(\mathbb{E}_{p \sim \hat{P}_t}[S_{\theta_i}(p, Y_t)] 
-          - S_{\theta_i}(\hat{f}_{\theta_i}(t)(X_t), Y_t)\big)\bigr), \quad \forall i \in \{0, \ldots, m-1\};$ \vspace{-0.1cm}\\
+          - S_{\theta_i}(\hat{f}_{\theta_i}(t), Y_t)\big)\bigr), \quad \forall i \in \{0, \ldots, m-1\};$ \vspace{-0.1cm}\\
       \State \textbf{3) Update the best competitor function for each $S_{\theta_i}$}:
-      \State $v_{i,j}(t+1) = \frac{v_{i,j}(t) \exp\bigl(-\eta_f S_{\theta_i}(\hat{f}_{j}(t)(X_t), Y_t)\bigr)}{\sum_{j=1}^F v_{i,j}(t) \exp\bigl(-\eta_f S_{\theta_i}(\hat{f}_{j}(t)(X_t), Y_t)\bigr)}, \quad \forall i \in \{0, \ldots, m-1\}, j \in \{1, \ldots, F\};$
+      \State $v_{i,j}(t+1) = \frac{v_{i,j}(t) \exp\bigl(-\eta_f S_{\theta_i}(\hat{f}_{j}(t), Y_t)\bigr)}{\sum_{j=1}^F v_{i,j}(t) \exp\bigl(-\eta_f S_{\theta_i}(\hat{f}_{j}(t), Y_t)\bigr)}, \quad \forall i \in \{0, \ldots, m-1\}, j \in \{1, \ldots, F\};$
       \For{$i = 0, \ldots, m-1$}
         \State Sample $j_i(t+1) \in [F] \sim v_{i,\cdot}(t+1)$;
         \State $\hat{f}_{\theta_i}(t+1) = f_{j_i(t+1)}$;
@@ -281,30 +288,32 @@ which does not depend on $P$. Thus, $O(P^*, P_y^*) = \min_P O(P, P_y^*)$.
   
 \begin{theorem}
   \label{thm:omni-twoplayer_online_q}
-  For a quantile level $\alpha \in (0,1)$, let $S_\alpha$ denote the class of scoring functions with representation \eqref{eq:elem_score_q} with $H([0,1])=1$. $\alpha$-level quantile prediction $\hat{P}$ from Algorithm \ref{alg:omni-twoplayer_online_q} achieves the following omniprediction error:
+  For a quantile level $\alpha \in (0,1)$, let $S_\alpha$ denote the class of scoring functions with representation \eqref{eq:elem_score_q} with $H([0,1]) \leq 1$ (the set of \textit{all} scoring functions that are consistent for the $\alpha$-level quantile functional under mild regularity conditions). Consider a class of competitors $\cf$ where each forecaster $f \in \cf$ provides $\alpha$-level quantile forecasts. With the target values $Y_t$, forecaster predictions $f(t)$ for $t \in [T], f \in \cf$ each taking values in a discretized grid of size $m$ and the learning rate $\eta_w = O(\sqrt{\frac{\log m}{T}})$ and $\eta_f = O(\sqrt{\frac{\log |\cf|}{T}})$, the output $\hat{P}_t$ from Algorithm \ref{alg:omni-twoplayer_online_q} achieves the following omniprediction error:
   \begin{align*}
-  \sup_{S \in S_\alpha,\, f \in \cf} \frac{1}{T} \sum_{t=1}^T \E_{p \sim \hat{P}(X_t)} [S(p, Y_t)] - \E[S(f(X_t), Y_t)]
+  \sup_{S \in S_\alpha,\, f \in \cf} \frac{1}{T} \sum_{t=1}^T \E_{p \sim \hat{P}_t} [S(p, Y_t)] - \E[S(f(t), Y_t)]
   \leq O\left(\sqrt{\frac{\log m|\cf|}{T}}\right)
   \end{align*}
 \end{theorem}
+
+
 \begin{proof}
 Observe that $|S_{\alpha, \theta_i}| \leq 1$. Regret bound of hedge algorithm (Theorem 1.5 of \cite{hazanoco}) gives the following:
 \begin{align}
-  \frac{1}{T} \sum_{t=1}^T \E_{j_i(t)}\left[S_{\alpha, \theta_i}(\hat{f}_{\theta_i}(t)(X_t), Y_t) \right]
-  & \,\leq\, \min_{f \in \cf} \frac{1}{T} \sum_{t=1}^T S_{\alpha, \theta_i}(f(X_t), Y_t) + \eta_f + \frac{\log|\cf|}{T\eta_f} \label{ieq:hedge_f_update}
+  \frac{1}{T} \sum_{t=1}^T \E_{j_i(t)}\left[S_{\alpha, \theta_i}(\hat{f}_{\theta_i}(t), Y_t) \right]
+  & \,\leq\, \min_{f \in \cf} \frac{1}{T} \sum_{t=1}^T S_{\alpha, \theta_i}(f(t), Y_t) + \eta_f + \frac{\log|\cf|}{T\eta_f} \label{ieq:hedge_f_update}
 \end{align}
 \begin{align}
   \max_{i \in \{0, \ldots, m-1\}} \frac{1}{T} \sum_{t=1}^T 
-  & \E_{p\sim \hat{P}(X_t)}\left[ S_{\alpha, \theta_i}(p, Y_t) - S_{\alpha, \theta_i}(\hat{f}_{\theta_i}(t)(X_t), Y_t) \right] \nonumber\\
-  & \leq \frac{1}{T} \sum_{t=1}^T \sum_{i=0}^{m-1} w_i(t) \, \E_{p\sim \hat{P}(X_t)}\left[ S_{\alpha, \theta_i}(p, Y_t) - S_{\alpha, \theta_i}(\hat{f}_{\theta_i}(t)(X_t), Y_t) \right] + 4\eta_w + \frac{\log m}{T\eta_w} \label{ieq:hedge_w_update}
+  & \E_{p\sim \hat{P}(X_t)}\left[ S_{\alpha, \theta_i}(p, Y_t) - S_{\alpha, \theta_i}(\hat{f}_{\theta_i}(t), Y_t) \right] \nonumber\\
+  & \leq \frac{1}{T} \sum_{t=1}^T \sum_{i=0}^{m-1} w_i(t) \, \E_{p\sim \hat{P}(X_t)}\left[ S_{\alpha, \theta_i}(p, Y_t) - S_{\alpha, \theta_i}(\hat{f}_{\theta_i}(t), Y_t) \right] + 4\eta_w + \frac{\log m}{T\eta_w} \label{ieq:hedge_w_update}
 \end{align}
 
 Putting these altogether, we have:
   \begin{align*}
-    & \sup_{S \in S_\alpha,\, f \in \cf} \frac{1}{T} \sum_{t=1}^T \E_{p \sim \hat{P}(X_t)} [S(p, Y_t)] - S(f(X_t), Y_t) \\
-    & \underset{Lemma \ref{lem:discretize_single_q}}{=} \sup_{i \in \{0, \ldots, m-1\}, f \in \cf} \frac{1}{T} \sum_{t=1}^T \E_{p \sim \hat{P}(X_t)} [S_{\alpha, \theta_i}(p, Y_t)] - S_{\alpha, \theta_i}(f(X_t), Y_t) \\
-    & \underset{Ieq. \eqref{ieq:hedge_f_update}}{\leq} \sup_i \frac{1}{T} \sum_{t=1}^T \E_{p \sim \hat{P}(X_t)} [S_{\alpha, \theta_i}(p, Y_t)] - \E_{j_i(t)}\left[S_{\alpha, \theta_i}(\hat{f}_{\theta_i}(t)(X_t), Y_t) \right] + O\left(\sqrt{\frac{\log|\cf|}{T}}\right) \\
-    & \underset{Ieq. \eqref{ieq:hedge_w_update}}{\leq} \sup_i \frac{1}{T} \sum_{t=1}^T \sum_{i=0}^{m-1} w_i(t) \, \E_{p\sim \hat{P}(X_t)}\left[ S_{\alpha, \theta_i}(p, Y_t) - \E_{j_i(t)}\left[S_{\alpha, \theta_i}(\hat{f}_{\theta_i}(t)(X_t), Y_t) \right] \right] + O\left(\sqrt{\frac{\log m|\cf|}{T}}\right) \\
+    & \sup_{S \in S_\alpha,\, f \in \cf} \frac{1}{T} \sum_{t=1}^T \E_{p \sim \hat{P}_t} [S(p, Y_t)] - S(f(t), Y_t) \\
+    & \underset{Lemma \ref{lem:discretize_single_q}}{=} \sup_{i \in \{0, \ldots, m-1\}, f \in \cf} \frac{1}{T} \sum_{t=1}^T \E_{p \sim \hat{P}_t} [S_{\alpha, \theta_i}(p, Y_t)] - S_{\alpha, \theta_i}(f(t), Y_t) \\
+    & \underset{Ieq. \eqref{ieq:hedge_f_update}}{\leq} \sup_i \frac{1}{T} \sum_{t=1}^T \E_{p \sim \hat{P}_t} [S_{\alpha, \theta_i}(p, Y_t)] - \E_{j_i(t)}\left[S_{\alpha, \theta_i}(\hat{f}_{\theta_i}(t), Y_t) \right] + O\left(\sqrt{\frac{\log|\cf|}{T}}\right) \\
+    & \underset{Ieq. \eqref{ieq:hedge_w_update}}{\leq} \sup_i \frac{1}{T} \sum_{t=1}^T \sum_{i=0}^{m-1} w_i(t) \, \E_{p\sim \hat{P}_t}\left[ S_{\alpha, \theta_i}(p, Y_t) - \E_{j_i(t)}\left[S_{\alpha, \theta_i}(\hat{f}_{\theta_i}(t), Y_t) \right] \right] + O\left(\sqrt{\frac{\log m|\cf|}{T}}\right) \\
     & \underset{Lemma \ref{lem:minimax_single_q_neg}}{=} O\left(\sqrt{\frac{\log m|\cf|}{T}}\right).
   \end{align*}
 \end{proof}

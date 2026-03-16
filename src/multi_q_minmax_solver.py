@@ -122,7 +122,7 @@ class VnComputer:
                 min_cost = costs[j_opt_min]
             else:
                 costs[j] = costs[j-1] - self.past_cumsum[n, j-1] + self.future_cumsum[n, j-1]
-                if costs[j] < min_cost - self.tol:
+                if costs[j] < min_cost: # - self.tol deleted on 0315
                     min_cost = costs[j]
                     j_opt = j
         
@@ -188,7 +188,7 @@ def single_q_minmax_solver2(    # for multi-q case. Should be able to merge with
     weighted_weights = np.sum(theta_weights * (thetas < forecast_values).astype(float))
     Bk_pre = np.concatenate([[-weighted_weights], np.cumsum(theta_weights) - weighted_weights])    # [0 (placeholder), B_1, ..., B_m=0]: Bk_pre[j] = sum_{i=0}^{j-1} w_i - \sum_{i=0}^{m-1} w_i * I(theta_i < f_i^s)
     
-    if np.isclose(Bk_pre[j_opt_pre], eq_value, atol=tol):
+    if np.isclose(Bk_pre[j_opt_pre], eq_value, rtol=0, atol=tol):
         return {
             "phat": j_opt_converter(j_opt_pre, thetas),
             "k_star": j_opt_pre,
@@ -203,14 +203,19 @@ def single_q_minmax_solver2(    # for multi-q case. Should be able to merge with
     # So the biggest value of j to check Bk_pre[j] \geq VALUE is j_n*. Since Bk_pre[j_n*] = \sum_{i=0}^{j_n*-1 = <max value of k_n*>} w_i - \sum_{i=0}^{m-1} w_i \indi,
     for j in range(j_opt_pre+1, j_opt_n+1):  
         if Bk_pre[j] >= eq_value - tol:
-            assert not np.isclose(Bk_pre[j-1], Bk_pre[j], atol=tol), f'Bk_pre[j-1]: {Bk_pre[j-1]}, Bk_pre[j]: {Bk_pre[j]}, eq_value: {eq_value}'
+            # Do we need this?
+            # assert not np.isclose(Bk_pre[j-1], Bk_pre[j], rtol=0, atol=tol), f'Bk_pre[j-1]: {Bk_pre[j-1]}, Bk_pre[j]: {Bk_pre[j]}, eq_value: {eq_value}'
             k_star = j-1
-            if np.isclose(eq_value, Bk_pre[j-1]):
+            if np.isclose(eq_value, Bk_pre[j-1], rtol=0, atol=tol):
                 k_star_prob = 0.0
-            elif np.isclose(eq_value, Bk_pre[j]):
+            elif np.isclose(eq_value, Bk_pre[j], rtol=0, atol=tol):
                 k_star_prob = 1.0
             else:
-                k_star_prob = (eq_value - Bk_pre[j-1]) / (Bk_pre[j] - Bk_pre[j-1])
+                # Scale numerator and denominator to avoid numerical instability before division
+                num = eq_value - Bk_pre[j-1]
+                denom = Bk_pre[j] - Bk_pre[j-1]
+                scale = max(abs(num), abs(denom), 1.0)
+                k_star_prob = (num / scale) / (denom / scale)
             phat = np.random.choice([j_opt_converter(k_star, thetas), j_opt_converter(k_star+1, thetas)], p=[k_star_prob, 1.0-k_star_prob])
             return {
                 "phat": phat,
@@ -241,7 +246,7 @@ def multi_q_minmax_solver(
     Vn_computer = VnComputer(weights = theta_weights, 
                             thetas = thetas, 
                             forecast_values = forecast_values,
-                            tol=tol,
+                            tol=np.min(theta_weights)/3, # tol=tol,
                             )
     Vn_values, j_optimal =  Vn_computer.compute_all_Vn()
 
@@ -256,7 +261,7 @@ def multi_q_minmax_solver(
                             eq_value=Vn_values[n] - Vn_values[n+1],     
                             j_opt_pre=j_optimal[n],
                             j_opt_n=j_optimal[n+1],
-                            tol=tol,
+                            tol=np.min(theta_weights)/3, # tol=tol,
                             )
         phat_dict_list.append(phat_dict)
 

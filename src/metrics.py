@@ -200,7 +200,7 @@ def elementary_scores_grid_N_F(p_grid_N_F, y, thetas, alpha_list):
 def elementary_scores_grid_T_N(p_grid_T_N, y, thetas, alpha_list):
     T = y.shape[0]
     N = alpha_list.shape[0]
-    assert p_grid_T_N.shape == (T, N)
+    assert p_grid_T_N.shape == (T, N), f"p_grid_T_N.shape: {p_grid_T_N.shape}, T: {T}, N: {N}"
     
     p_grid = p_grid_T_N[:, :, None]     # (T, N, 1)
     y_arr = y[:, None, None]           # (T, 1, 1)
