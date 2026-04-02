@@ -100,6 +100,9 @@ def ql_loss(p, y, alpha_list):
     return np.mean(loss, axis=1)
 
 
+
+
+
 # NOT CONSISTENT LOSS FUNCTION
 # def log_loss_quantile(p, y, alpha_list):
 #     """
@@ -209,6 +212,21 @@ def elementary_scores_grid_T_N(p_grid_T_N, y, thetas, alpha_list):
     term1 = (y_arr < p_grid).astype(float) - alpha_grid          # (T, N, 1)
     term2 = (theta_grid < p_grid).astype(float) - (theta_grid < y_arr).astype(float)  # (1, 1, m)
     return term1 * term2          # (T, N, m)
+
+
+def elementary_scores_grid_T_N_F(p_grid_T_N_F, y, thetas, alpha_list):
+    T = y.shape[0]
+    N = alpha_list.shape[0]
+    F = p_grid_T_N_F.shape[2]
+    assert p_grid_T_N_F.shape == (T, N, F), f"p_grid_T_N_F.shape: {p_grid_T_N_F.shape}, T: {T}, N: {N}, F: {F}"
+    
+    p_grid = p_grid_T_N_F[:, :, None, :]     # (T, N, 1, F)
+    y_arr = y[:, None, None, None]           # (T, 1, 1, 1)
+    theta_grid = thetas[None, None, :, None]      # (1, 1, m, 1)
+    alpha_grid = alpha_list[None, :, None, None]  # (1, N, 1, 1)
+    term1 = (y_arr < p_grid).astype(float) - alpha_grid          # (T, N, 1, F)
+    term2 = (theta_grid < p_grid).astype(float) - (theta_grid < y_arr).astype(float)  # (1, 1, m, 1)
+    return term1 * term2          # (T, N, m, F)
 
 
 
