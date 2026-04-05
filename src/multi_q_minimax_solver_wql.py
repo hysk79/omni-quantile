@@ -29,6 +29,7 @@ def multi_q_minmax_solver_wql(
     j_optimal = Vn_dic['theta_interval'][:,0]
     assert Vn_values.shape == j_optimal.shape == (N+1,)
     assert np.all(j_optimal[:-1] <= j_optimal[1:]), f"j_optimal must be sorted (non-decreasing), j_optimal: {j_optimal}"
+    #print(f'Old theta stars {j_optimal}')
 
     # print(f"Vn_values: {Vn_values}")
     # print(f"j_optimal: {j_optimal}")
@@ -38,6 +39,8 @@ def multi_q_minmax_solver_wql(
     
     numerator_N = weighted_forecasts_N + Vn_values[:-1] - Vn_values[1:]
     phat = np.concatenate([[-np.inf], numerator_N / weights_N])   # Just to make the indices aligned with V_n
+    # print(f'old numerator: {numerator_N}')
+    # print(f'old denominator: {weights_N}')
     
     if not np.all(phat[:-1] <= phat[1:] + 1e-10):
         print(f'phat is not ordered, max violation: {np.max(phat[:-1] - phat[1:])}')
@@ -73,6 +76,152 @@ def multi_q_minmax_solver_wql(
     return phat[1:], Vn_values
 
 
+
+def efficeint_solve_weighted_hinge_split(
+    weights_NF: np.ndarray,
+    forecasts_NF: np.ndarray,
+    tol: float = 1e-12,
+    verbose: bool = False,
+) -> tuple[float, tuple[float, float]]:
+    """
+    Efficiently solve the weighted hinge split problem.
+    """
+    weights = np.asarray(weights_NF, dtype=np.float64)
+    forecasts = np.asarray(forecasts_NF, dtype=np.float64)
+
+    if weights.shape != forecasts.shape:
+        raise ValueError(f"Shape mismatch: weights {weights.shape}, forecasts {forecasts.shape}")
+    if weights.ndim != 2:
+        raise ValueError(f"Expected 2D arrays of shape (N, F), got ndim={weights.ndim}")
+    if np.any(weights < -tol):
+        raise ValueError("weights_NF must be nonnegative")
+
+    N, F = weights.shape
+
+    # Column sum and cumsum
+    w_sum_N = np.concatenate([[0.0], np.sum(weights, axis=1)])
+    w_cumsum_N_front = np.cumsum(w_sum_N)               # w_cumsum_N_front[i]: quantile level 1 to i's weight sum
+    w_cumsum_N_back = w_sum_N.sum() - w_cumsum_N_front  # w_cumsum_N_back[i]:  quantile level i+1 to N's weight sum
+    wf_N = np.concatenate([[0.0], np.sum(weights * forecasts, axis=1)])
+
+    weights_total = w_sum_N.sum()
+    if not np.isclose(weights_total, 1.0, rtol=0.0, atol=tol):
+        # raise ValueError(f"weights_NF must sum to 1.0, got {total_w}")
+        print(f"weights_NF must sum to 1.0, got {weights_total}")
+
+    w_1d = weights.reshape(-1)
+    f_1d = forecasts.reshape(-1)
+    order = np.argsort(f_1d, kind="mergesort")
+    f_sorted = f_1d[order]
+    w_sorted = w_1d[order]
+    
+    #########################################################################################
+    # Find theta_star for each n_split = 1, ..., N-1, which is one of the values in f_sorted.
+    #########################################################################################
+    f_uniq_vals: list[float] = []               # unique values of f_sorted, let length be K
+    f_uniq_vals_w_cumsum: list[float] = []      # f_uniq_vals_w_cumsum[k]:  \sum_{s,f) w_s^f * 1(f_s^f <= f_uniq_vals[k])
+    f_uniq_vals_wf_cumsum: list[float] = []    # f_uniq_vals_wf_cumsum[k]: \sum_{s,f) w_s^f * f_s^f * 1(f_s^f = f_uniq_vals[k])
+    M = f_sorted.size
+    running_w_sum = 0.0
+    running_wf_sum = 0.0
+    i = 0
+    while i < M:
+        v = float(f_sorted[i])
+        j = i
+        while j < M and f_sorted[j] == v:
+            j += 1
+        here_w_sum = w_sorted[i:j].sum()
+        running_w_sum += here_w_sum
+        running_wf_sum += here_w_sum * v
+        f_uniq_vals.append(float(v))
+        f_uniq_vals_w_cumsum.append(running_w_sum)
+        f_uniq_vals_wf_cumsum.append(running_wf_sum)
+        i = j
+    wf_total = wf_N[1:].sum()
+    w_total = w_sum_N[1:].sum()
+    assert np.isclose(running_w_sum, 1.0, rtol=0.0, atol=1e-10), f'running_w_sum: {running_w_sum}, 1.0: {1.0}'
+    assert np.isclose(running_wf_sum, wf_total, rtol=0.0, atol=1e-10), f'running_wf_sum: {running_wf_sum}, w_total: {wf_total}'
+
+    K = len(f_uniq_vals)
+    theta_stars = np.empty(N+1, dtype=float)
+    theta_stars[0] = f_uniq_vals[0]
+    theta_stars[N] = f_uniq_vals[K-1]
+    theta_stars_idx = np.empty(N+1, dtype=int)   # Index of theta_star in f_sorted
+    theta_stars_idx[0] = 0
+    theta_stars_idx[N] = K-1
+
+
+    curr_k_idx = 0
+    s_idx = np.repeat(np.arange(N, dtype=int), F)
+    Vn = np.zeros(N+1, dtype=float)
+    for n_split in range(1, N):
+        while f_uniq_vals_w_cumsum[curr_k_idx] < w_cumsum_N_front[n_split]:
+            curr_k_idx += 1
+            if curr_k_idx >= K:
+                raise ValueError(f'curr_k_idx reached end of uniq_vals, curr_k_idx: {curr_k_idx}, K: {K}')
+        theta_stars[n_split] = f_uniq_vals[curr_k_idx]
+        theta_stars_idx[n_split] = curr_k_idx
+
+        # Compute objective value at theta_star for this n_split.
+        left_mask = s_idx < n_split
+        left_term = np.maximum(f_1d[left_mask] - theta_stars[n_split], 0.0)
+        right_term = np.maximum(theta_stars[n_split] - f_1d[~left_mask], 0.0)
+        Vn[n_split] = float(np.dot(w_1d[left_mask], left_term) + np.dot(w_1d[~left_mask], right_term))
+
+    Vn_diff_arr = Vn[:-1] - Vn[1:]
+    numerator_N = wf_N[1:] + Vn_diff_arr
+    phat = numerator_N / (w_sum_N[1:])
+    # print(f'new thetas: {theta_stars}')
+
+    # Numerical stability warnings
+    if np.abs(np.sum(Vn_diff_arr)) > 1e-10:
+        print(f'Warning: V0 - VN = {np.sum(Vn_diff_arr)} exceeds 1e-10')
+    if np.min(phat[1:] - phat[:-1]) < -1e-12:
+        print(f'Warning: phat is not ordered, min violation: {np.min(phat[1:] - phat[:-1])}')
+
+
+    return phat, Vn[:-1] - Vn[1:]
+
+    # # #########################################################################################
+    # # # Compute V_{n-1} - V_n
+    # # #########################################################################################
+    # def zero_if_neg_idx(arr, idx):
+    #     if idx < 0:
+    #         return 0.0
+    #     if idx >= len(arr):
+    #         return arr[len(arr)-1]
+    #     try:
+    #         return arr[idx]
+    #     except IndexError:
+    #         raise IndexError(f'idx: {idx}, arr_length: {len(arr)}')
+
+    # # print(f'K={K}, theta_stars_idx: {theta_stars_idx}')
+    # # print(f'fuvwc len: {len(f_uniq_vals_w_cumsum)}, fuvwfc len: {len(f_uniq_vals_wf_cumsum)}')
+
+    # Vn_diff_arr = np.empty(N+1, dtype=float)    # Vn_diff_arr[n]: V_{n-1} - V_n, Vn_diff_arr[0] not used
+    # for n in range(1, N + 1):
+    #     Vn_diff_arr[n] = zero_if_neg_idx(f_uniq_vals_w_cumsum, theta_stars_idx[n-1]-1) * theta_stars[n-1] + \
+    #         (w_total - zero_if_neg_idx(f_uniq_vals_w_cumsum, theta_stars_idx[n]-1)) * theta_stars[n] + \
+    #         zero_if_neg_idx(f_uniq_vals_wf_cumsum, theta_stars_idx[n]-1) - zero_if_neg_idx(f_uniq_vals_wf_cumsum, theta_stars_idx[n-1]-1) - \
+    #         w_cumsum_N_front[n-1] * theta_stars[n-1] - w_cumsum_N_back[n] * theta_stars[n] - wf_N[n]
+
+    #     # print(f'n: {n}, Vn_diff_arr[n]: {Vn_diff_arr[n]}')
+    #     # print(f'term 1: {zero_if_neg_idx(f_uniq_vals_w_cumsum, theta_stars_idx[n-1]-1) * theta_stars[n-1]}')
+    #     # print(f'term 2: {(1 - zero_if_neg_idx(f_uniq_vals_w_cumsum, theta_stars_idx[n]-1)) * theta_stars[n]}')
+    #     # print(f'term 3: {zero_if_neg_idx(f_uniq_vals_wf_cumsum, theta_stars_idx[n]-1) - zero_if_neg_idx(f_uniq_vals_wf_cumsum, theta_stars_idx[n-1]-1)}')
+    #     # print(f'term 4: {- w_cumsum_N_front[n-1] * theta_stars[n-1]}')
+    #     # print(f'term 5: {- w_cumsum_N_back[n] * theta_stars[n]}')
+    #     # print(f'term 6: {- wf_N[n]}')
+
+    # numerator_N = wf_N[1:] + Vn_diff_arr[1:]
+    # phat = numerator_N / (w_sum_N[1:])
+
+    
+
+    return phat, Vn_diff_arr[1:]
+
+
+
 def minimax_value_neg(alpha_list: np.ndarray, Vn_values: np.ndarray) -> float:
     """
     Negation of minimax value of negative of the minimax value.
@@ -86,7 +235,6 @@ def _solve_weighted_hinge_from_sorted(
     g_sorted: np.ndarray,
     w_sorted: np.ndarray,
     left_sorted: np.ndarray,
-    start_idx: int = 0,     # Prevents O(NF) search for each n_split. Rather O(NF) total for all n_split.
     tol: float = 1e-12,
     verbose: bool = False,
 ) -> tuple[float, tuple[float, float]]:
