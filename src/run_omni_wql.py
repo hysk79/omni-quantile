@@ -11,7 +11,7 @@ import metrics
 import multi_q_minimax_solver_wql
 importlib.reload(metrics)
 importlib.reload(multi_q_minimax_solver_wql)
-from metrics import pinball_loss
+from metrics import pinball_loss, omni_error_from_pb_loss, omni_error_from_pb_loss_multiH
 from multi_q_minimax_solver_wql import multi_q_minmax_solver_wql, minimax_value_neg, efficeint_solve_weighted_hinge_split, efficeint_solve_weighted_hinge_split_multiH
 
 import time
@@ -20,46 +20,6 @@ import time
 # Main Omniprediction Experiment
 # ============================================================================
 
-def omni_error_from_pb_loss(pb_loss: np.ndarray):
-    # scores: (T, N, ..)
-    # return: (T, ..)
-    if pb_loss.ndim == 2:
-        return np.max(pb_loss.cumsum(axis=0), axis=1) / (np.arange(pb_loss.shape[0]) + 1)
-    elif pb_loss.ndim == 3:
-        return np.max(pb_loss.cumsum(axis=0), axis=1) / (np.arange(pb_loss.shape[0])[:, None] + 1)
-    else:
-        raise ValueError(f"scores.ndim: {pb_loss.ndim}")
-
-def omni_error_from_pb_loss_multiH(pb_loss: np.ndarray):
-    # scores: (T, H, N, ..)
-    # return: (T, ..)
-    if pb_loss.ndim == 3:
-        return np.max(pb_loss.cumsum(axis=0), axis=(1,2)) / (np.arange(pb_loss.shape[0]) + 1)
-    elif pb_loss.ndim == 4:
-        return np.max(pb_loss.cumsum(axis=0), axis=(1,2)) / (np.arange(pb_loss.shape[0])[:, None] + 1)
-    else:
-        raise ValueError(f"scores.ndim: {pb_loss.ndim}")
-
-
-def ql_error_from_pb_loss(pb_loss: np.ndarray):
-    # scores: (T, N, ..)
-    # return: (T, ..)
-    if pb_loss.ndim == 2:
-        return np.average(pb_loss.cumsum(axis=0), axis=1) / (np.arange(pb_loss.shape[0]) + 1)
-    elif pb_loss.ndim == 3:
-        return np.average(pb_loss.cumsum(axis=0), axis=1) / (np.arange(pb_loss.shape[0])[:, None] + 1)
-    else:
-        raise ValueError(f"scores.ndim: {pb_loss.ndim}")
-
-def ql_error_from_pb_loss_multiH(pb_loss: np.ndarray):
-    # scores: (T, H, N, ..)
-    # return: (T, ..)
-    if pb_loss.ndim == 3:
-        return np.average(pb_loss.cumsum(axis=0), axis=(1,2)) / (np.arange(pb_loss.shape[0]) + 1)
-    elif pb_loss.ndim == 4:
-        return np.average(pb_loss.cumsum(axis=0), axis=(1,2)) / (np.arange(pb_loss.shape[0])[:, None] + 1)
-    else:
-        raise ValueError(f"scores.ndim: {pb_loss.ndim}")
 
 # maybe to add unit size and flexible Y range here. Something like if Y value that is higher than current range of Y, add more \theta_is and put some weights there. (Should prove if we still have same Hedge performance bound)
 def omniprediction_multiq_wql(Y: pd.Series, forecasts_dict: dict, unit: int = 100,

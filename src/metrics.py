@@ -100,6 +100,22 @@ def ql_loss(p, y, alpha_list):
     return np.mean(loss, axis=1)
 
 
+def coverage(p, y):
+    # p: (T, N, ..)
+    # y: (T,)
+    # alpha_list: (N,)
+    # return: (T, N, ..)
+    
+    if p.ndim == 2:
+        return p > y[:, None]
+    elif p.ndim == 3:
+        return p > y[:, None, None]
+    else:
+        raise ValueError(f"p.ndim: {p.ndim}")
+
+
+
+
 
 
 
@@ -281,3 +297,49 @@ def create_scoring_function_class(
     ]
     
     return scoring_functions, thetas
+
+
+
+
+
+def omni_error_from_pb_loss(pb_loss: np.ndarray):
+    # scores: (T, N, ..)
+    # return: (T, ..)
+    if pb_loss.ndim == 2:
+        return np.max(pb_loss.cumsum(axis=0), axis=1) / (np.arange(pb_loss.shape[0]) + 1)
+    elif pb_loss.ndim == 3:
+        return np.max(pb_loss.cumsum(axis=0), axis=1) / (np.arange(pb_loss.shape[0])[:, None] + 1)
+    else:
+        raise ValueError(f"scores.ndim: {pb_loss.ndim}")
+
+def omni_error_from_pb_loss_multiH(pb_loss: np.ndarray):
+    # scores: (T, H, N, ..)
+    # return: (T, ..)
+    if pb_loss.ndim == 3:
+        return np.max(pb_loss.cumsum(axis=0), axis=(1,2)) / (np.arange(pb_loss.shape[0]) + 1)
+    elif pb_loss.ndim == 4:
+        return np.max(pb_loss.cumsum(axis=0), axis=(1,2)) / (np.arange(pb_loss.shape[0])[:, None] + 1)
+    else:
+        raise ValueError(f"scores.ndim: {pb_loss.ndim}")
+
+
+def ql_error_from_pb_loss(pb_loss: np.ndarray):
+    # scores: (T, N, ..)
+    # return: (T, ..)
+    if pb_loss.ndim == 2:
+        return np.average(pb_loss.cumsum(axis=0), axis=1) / (np.arange(pb_loss.shape[0]) + 1)
+    elif pb_loss.ndim == 3:
+        return np.average(pb_loss.cumsum(axis=0), axis=1) / (np.arange(pb_loss.shape[0])[:, None] + 1)
+    else:
+        raise ValueError(f"scores.ndim: {pb_loss.ndim}")
+
+def ql_error_from_pb_loss_multiH(pb_loss: np.ndarray):
+    # scores: (T, H, N, ..)
+    # return: (T, ..)
+    if pb_loss.ndim == 3:
+        return np.average(pb_loss.cumsum(axis=0), axis=(1,2)) / (np.arange(pb_loss.shape[0]) + 1)
+    elif pb_loss.ndim == 4:
+        return np.average(pb_loss.cumsum(axis=0), axis=(1,2)) / (np.arange(pb_loss.shape[0])[:, None] + 1)
+    else:
+        raise ValueError(f"scores.ndim: {pb_loss.ndim}")
+

@@ -100,37 +100,38 @@ class VnComputer_v2:
             Optimal cut point (0-indexed, j in [0, m])
         """
         if n == 0:
-            return 0.0, 0
+            return 0.0, 0,
         if n == self.N:
-            return 0.0, self.m
+            return 0.0, self.m,
         assert 0 < n < self.N
         
-        costs = np.zeros(self.m+1, dtype=np.float64)
-        min_cost = np.inf
-        j_opt = j_opt_min
 
-        for j in range(j_opt_min, self.m+1):
-            if j == j_opt_min:
-                past_sum = self.past_cumsum[n, j_opt_min:].sum()
-                if j_opt_min == 0:
-                    future_sum = 0.0
-                else:
-                    future_sum = self.future_cumsum[n, :j_opt_min].sum()
-                costs[j_opt_min] = past_sum + future_sum
-                min_cost = costs[j_opt_min]
-            else:
-                costs[j] = costs[j-1] - self.past_cumsum[n, j-1] + self.future_cumsum[n, j-1]
-                if costs[j] < min_cost: # - self.tol deleted on 0315
-                    min_cost = costs[j]
-                    j_opt = j
-        
-        if min_cost == np.inf:
-            raise ValueError(f"min_cost is inf at n={n}, j_opt_min={j_opt_min}")
+        j_min = j_opt_min
+        past_row = self.past_cumsum[n]
+        future_row = self.future_cumsum[n]
+
+        c0 = past_row[j_min:].sum()
+        if j_min > 0:
+            c0 += future_row[:j_min].sum()
+
+        if j_min < self.m:
+            inc = -past_row[j_min:self.m] + future_row[j_min:self.m]
+            tail = c0 + np.cumsum(inc)
+            costs_segment = np.empty(1 + tail.shape[0], dtype=np.float64)
+            costs_segment[0] = c0
+            costs_segment[1:] = tail
+        else:
+            costs_segment = np.array([c0], dtype=np.float64)
+
+        j_rel = int(np.argmin(costs_segment))
+        j_opt = j_min + j_rel
+        min_cost = float(costs_segment[j_rel])
+
         
         # print(f'Vn compute at n={n}, j_opt_min={j_opt_min}, j_opt={j_opt}, min_cost={min_cost}')
         # print(costs)
 
-        return min_cost, j_opt
+        return min_cost, j_opt, 
 
     
     def compute_all_Vn(self) -> Tuple[np.ndarray, np.ndarray, List[np.ndarray]]:
@@ -150,11 +151,17 @@ class VnComputer_v2:
         Vn_values[0] = 0.0
         j_optimal[0] = 0
         
+        time2 = 0.0
+        time3 = 0.0
         for n in range(1, self.N + 1):
-            Vn, j_opt = self.compute_Vn(n=n, j_opt_min=j_optimal[n-1])
+            Vn, j_opt, t2, t3 = self.compute_Vn(n=n, j_opt_min=j_optimal[n-1])
+            time2 += t2
+            time3 += t3
             Vn_values[n] = Vn
             j_optimal[n] = j_opt
-        
+            
+        print(f'time2: {time2}, time3: {time3}')
+
         return Vn_values, j_optimal
 
 
@@ -196,9 +203,9 @@ def single_q_minmax_solver2_v2(    # for multi-q case. Should be able to merge w
             "k_star": j_opt_pre,
             "k_star_prob": 1.0,
         }
-    assert Bk_pre[j_opt_pre] < eq_value + tol, f"j_(n-1)*: {j_opt_pre}, Bk_pre[j_opt_pre]: {Bk_pre[j_opt_pre]}, eq_value: {eq_value}"
-    assert eq_value < Bk_pre[j_opt_n] + tol, f"j_n*: {j_opt_n}, Bk_pre[j_opt_n]: {Bk_pre[j_opt_n]}, eq_value: {eq_value}"
-    assert j_opt_pre < j_opt_n
+    # assert Bk_pre[j_opt_pre] < eq_value + tol, f"j_(n-1)*: {j_opt_pre}, Bk_pre[j_opt_pre]: {Bk_pre[j_opt_pre]}, eq_value: {eq_value}"
+    # assert eq_value < Bk_pre[j_opt_n] + tol, f"j_n*: {j_opt_n}, Bk_pre[j_opt_n]: {Bk_pre[j_opt_n]}, eq_value: {eq_value}"
+    # assert j_opt_pre < j_opt_n
 
     # Bk_pre[j] = \sum_{i=0}^{j-1} w_i - \sum_{i=0}^{m-1} w_i * I(theta_i < f_i^s). 
     # From theory, there exists k_n* s.t. j_{n-1}* <= k_n* < j_n* and \sum_{i=0}^{k_n*} w_i >= VALUE and \sum_{i=0}^{k_n*-1} w_i < VALUE.

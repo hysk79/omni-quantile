@@ -25,7 +25,9 @@ def omni_error_from_scores(scores: np.ndarray):
     else:
         raise ValueError(f"scores.ndim: {scores.ndim}")
 
-
+def j_opt_converter (j_opt: int or np.ndarray, thetas: np.ndarray) -> float:
+    thetas_gap = thetas[1] - thetas[0]
+    return thetas[0] + (j_opt - 0.5) * thetas_gap
 
 # ============================================================================
 # Main Omniprediction Experiment
@@ -34,14 +36,13 @@ def omni_error_from_scores(scores: np.ndarray):
 # maybe to add unit size and flexible Y range here. Something like if Y value that is higher than current range of Y, add more \theta_is and put some weights there. (Should prove if we still have same Hedge performance bound)
 def omniprediction_multiq_online_v2(Y: pd.Series, forecasts_dict: dict, unit: int = 100,
                                 alpha_list: List[float] = [0.5], eta_multiplier: float = 1,
-                                seed: int = 42, verbose: bool = False):
+                                seed_list: List[int] = [42], verbose: bool = False):
 
     if verbose:
         print("="*70)
         print("OMNIPREDICTION MULTI-QUANTILE EXPERIMENT")
         print("="*70)
     
-    np.random.seed(seed)
     dates_list = sorted(Y.index)
     T = len(dates_list)
 
@@ -106,29 +107,25 @@ def omniprediction_multiq_online_v2(Y: pd.Series, forecasts_dict: dict, unit: in
 
     # Initialize algorithm state
     w = np.ones((N, m, F)) / (N*m*F)  # Uniform weights over thetas and forecasters
-    pinball_v = np.ones((N,F)) / F  # each quantilie level separately
-    pinball_f_selected_indices = np.zeros(N, dtype=np.int32)
-    ql_v = np.ones(F) / F  # all quantile levels together
-    ql_f_selected_index = 0
-    
+
     # Storage for regrets over time
     y_arr = np.array(Y.values)
     phat_history = np.zeros((T, N))
+    k_star_history = np.zeros((T, N))
+    k_star_prob_history = np.zeros((T, N))
     w_history = np.zeros((T, N, m, F))
     minimax_value_history = np.zeros((T,))
     omni_error_history = np.zeros((T, N, m))
     forecasters_preds_history = np.zeros((T, N, F))     # Predictions of each forecaster
     forecasters_score_history = np.zeros((T, N, m, F))
-
-    pinball_selection_history = np.zeros((T, N))
-    pinball_preds_history = np.zeros((T, N))
-    ql_selection_history = np.zeros((T))
-    ql_preds_history = np.zeros((T, N))
     
+
+    indicators_NmF = thetas[None, None, :, None] < all_forecaster_preds_all_dates[:,:,None,:]
+
     if verbose:
         print(f"\nRunning omniprediction algorithm...")
     
-    for t, date in tqdm(enumerate(dates_list)):
+    for t, date in enumerate(dates_list):
         # x_t = X[t]
         y_t = Y[date]
         
@@ -137,7 +134,8 @@ def omniprediction_multiq_online_v2(Y: pd.Series, forecasts_dict: dict, unit: in
         assert forecaster_preds.shape == (N, F)
 
         forecaster_preds = np.asarray(forecaster_preds, dtype=np.float64)
-        weighted_indicators_NmF = w * np.asarray(thetas[None, :, None] < forecaster_preds[:,None,:], dtype=np.float64)
+        # weighted_indicators_NmF = w * np.asarray(thetas[None, :, None] < forecaster_preds[:,None,:], dtype=np.float64)
+        weighted_indicators_NmF = w * indicators_NmF[t,:,:,:]
         
         if np.min(w) < 1e-15:
             print(f"Minimum of weight is too small: {np.min(w)}")
@@ -152,18 +150,21 @@ def omniprediction_multiq_online_v2(Y: pd.Series, forecasts_dict: dict, unit: in
         k_star = np.array([phat_dict["k_star"] for phat_dict in phat_dict_list])
         k_star_prob = np.array([phat_dict["k_star_prob"] for phat_dict in phat_dict_list])
 
-        phat_history[t,:] = phat
-        omni_error_history[t,:,:] = elementary_scores_grid_N(phat, y_t, thetas, alpha_list)
-        
+        if np.min(phat[1:] - phat[:-1]) < -1e-15:
+            print(f"Warning: phat[1:] - phat[:-1] < -1e-15: {np.min(phat[1:] - phat[:-1])}")
 
-        # Step 2: Compute expected score under P_t (vectorized)
-        phat_score = k_star_prob[:, None] * elementary_scores_grid_N((k_star / m), y_t, thetas, alpha_list) + \
-            (1 - k_star_prob[:, None]) * elementary_scores_grid_N((k_star + 1) / m, y_t, thetas, alpha_list)
-        f_scores = elementary_scores_grid_N_F(forecaster_preds, y_t, thetas, alpha_list)
+        phat_history[t,:] = phat
+        k_star_history[t,:] = k_star
+        k_star_prob_history[t,:] = k_star_prob
         
+        # Step 2: Compute expected score under P_t (vectorized)
+        phat_score = k_star_prob[:, None] * elementary_scores_grid_N((k_star), y_t, thetas, alpha_list) + \
+            (1 - k_star_prob[:, None]) * elementary_scores_grid_N((k_star + 1), y_t, thetas, alpha_list)
+        omni_error_history[t,:,:] = phat_score
+        
+        f_scores = elementary_scores_grid_N_F(forecaster_preds, y_t, thetas, alpha_list)
         forecasters_preds_history[t,:,:] = forecaster_preds
         forecasters_score_history[t,:,:,:] = f_scores
-        
         
         assert phat_score.shape == (N, m), f'phat_score.shape: {phat_score.shape}, N: {N}, m: {m}'
         assert f_scores.shape == (N, m, F), f'f_scores.shape: {f_scores.shape}, N: {N}, m: {m}, F: {F}'
@@ -178,43 +179,6 @@ def omniprediction_multiq_online_v2(Y: pd.Series, forecasts_dict: dict, unit: in
         log_w -= max_log_w
         w = np.exp(log_w)
         w /= np.sum(w)
-
-        
-        # Step 4: Update forecaster selection v_{i,j} (vectorized implementation)
-        # Step 4-2: Hedge algorithm using pinball loss
-        # Store selection history in vectorized manner
-        pinball_selection_history[t, :] = pinball_f_selected_indices
-        pinball_preds_history[t, :] = forecaster_preds[np.arange(N), pinball_f_selected_indices]
-        
-        # Vectorized pinball loss computation and update
-        # Compute pinball losses for all (N, F) at once
-        pinball_losses = pinball_loss(forecaster_preds, y_t, alpha_list[:, None])  # expects broadcasting: preds (N, F), alpha_list (N,1) -> (N,F)
-        assert pinball_losses.shape == (N, F)
-
-        # Vectorized update of pinball_v (N,F)
-        pinball_v = np.log(pinball_v + 1e-10)
-        pinball_v -= eta * pinball_losses / m
-        pinball_v -= np.max(pinball_v, axis=1, keepdims=True)
-        pinball_v = np.exp(pinball_v)
-        pinball_v /= np.sum(pinball_v, axis=1, keepdims=True)
-
-        # Vectorized forecaster selection for all n at once
-        # Use cumulative sums for np.random.choice efficiency
-        cum_v = np.cumsum(pinball_v, axis=1)
-        r = np.random.rand(N, 1)
-        pinball_f_selected_indices = (cum_v > r).argmax(axis=1)
-
-
-        # Step 4-3: Hedge algorithm using QL loss
-        ql_selection_history[t] = ql_f_selected_index
-        ql_preds_history[t,:] = forecaster_preds[:, ql_f_selected_index]
-        ql_loss = np.mean(pinball_losses, axis=0)
-        ql_v = np.log(ql_v + 1e-10)
-        ql_v -= eta * ql_loss / m
-        ql_v -= np.max(ql_v)
-        ql_v = np.exp(ql_v)
-        ql_v /= np.sum(ql_v)
-        ql_f_selected_index = np.random.choice(F, p=ql_v)
 
     omni_score_trace = omni_error_from_scores(omni_error_history)
     assert omni_score_trace.shape == (T,)
@@ -233,21 +197,16 @@ def omniprediction_multiq_online_v2(Y: pd.Series, forecasts_dict: dict, unit: in
     # Return results
     return {
         'phat_history': phat_history,
-        # 'w_history': w_history,
+        'w_history': w_history,
         'minimax_value_history': minimax_value_history, # (T,)
-        # 'omni_error_history': omni_error_history,   # (T, N, m) 
+        'omni_error_history': omni_error_history,   # (T, N, m) 
         'forecasters_preds_history': forecasters_preds_history, # (T, N, F)
         # 'forecasters_score_history': forecasters_score_history, # (T, N, m, F)
         'omni_score_trace': omni_score_trace,   # (T,)
         'forecasters_score_trace': forecasters_score_trace, # (T, F)    
         'best_forecaster_score_trace': best_forecaster_score_trace, # (T,)
         'thetas': thetas,
-    
-        'pinball_selection_history': pinball_selection_history,     # (T, N)
-        'pinball_preds_history': pinball_preds_history,             # (T, N)
-        'ql_selection_history': ql_selection_history,               # (T,)
-        'ql_preds_history': ql_preds_history,                       # (T, N)
-        
+
         'Y': Y,
         'y_arr': y_arr,
         'dates_list': dates_list,
@@ -256,7 +215,6 @@ def omniprediction_multiq_online_v2(Y: pd.Series, forecasts_dict: dict, unit: in
         'm': m,
         'F': F,
         'eta_multiplier': eta_multiplier,
-        'seed': seed,
         'alpha_list': alpha_list,
         'forecaster_names': forecaster_names,
         # 'theoretical_bound': theoretical_bound,
