@@ -1,0 +1,340 @@
+
+
+% Single quantile omniprediction algorithm and theorem
+
+
+% Batch
+\begin{algorithm}
+    \caption{Two-player game based single quantile omniprediction (batch version)} \label{alg:omni-twoplayer_q}
+    \begin{algorithmic}[1]
+    \State \textbf{Data:} Data $\{(X_i, Y_i)\}_{i=1}^n$, hyperparameters $m \in \mathbb{N}$, $\eta > 0$, competitor functions $\{\hat{f}_{\theta_i}\}_{i=0}^{m-1}$.
+    \State $w_i(1) = \frac{1}{m}$, for all $i \in \{0, \ldots, m-1\}$;
+    \For{$t = 1, \ldots, n$}
+        \State $B_k(x) := \sum_{i=0}^{k-1} w_i - \sum_{i=0}^{m-1}w_i \one(\theta_i < \hat{f}_{\theta_i}(x))$, $\quad k^*(x) = \max\{k: B_k \leq 0\}$
+        \State 
+        \makebox[0pt][l]{$\displaystyle
+            \hat{P}_t(x) = \frac{B_{k^*(x)+1}}{B_{k^*(x)+1} + |B_{k^*(x)}|}\delta_{\frac{k^*(x)}{m}} +
+            \frac{|B_{k^*(x)}|}{B_{k^*(x)+1} + |B_{k^*(x)}|}\delta_{\frac{k^*(x)+1}{m}}$
+            }
+        \State $w_i(t+1) \propto w_i(t) \exp\bigl(\eta \big(\mathbb{E}_{p \sim \hat{P}_t(X_t)}[S_{\theta_i}(p, Y_t)] 
+            - S_{\theta_i}(\hat{f}_{\theta_i}(X_t), Y_t)\big)\bigr), \quad \forall i \in \{0, \ldots, m-1\};$
+    \EndFor
+    \State \textbf{return} $\hat{P} = \frac{1}{n} \sum_{i=1}^n \hat{P}_i$
+    \end{algorithmic}
+\end{algorithm}
+
+    
+% Online
+\begin{algorithm}
+    \caption{Two-player game based single quantile omniprediction (fully online version)} \label{alg:omni-twoplayer_online_q}
+    \begin{algorithmic}[1]
+    \State \textbf{Data:} Data stream $\{Y_t\}_{t=1}^T$, hyperparameters $m, F \in \mathbb{N}$, $\eta_w, \eta_f > 0$, competitor function class $\cf = \{f_j\}_{j=1}^{F}$.
+    \State For $t=1$,$w_i(t) = \frac{1}{m}$, $\hat{f}_{\theta_i}(t) = f_1$, for all $i \in \{0, \ldots, m-1\}$;
+    \State $v_{i,j}(1) = \frac{1}{F}$, for all $i \in \{0, \ldots, m-1\}$, $j \in \{1, \ldots, F\}$;
+    \For{$t = 1, \ldots, T$}
+      \State \textbf{1) Make prediction at time $t$}:
+      \State $B_k := \sum_{i=0}^{k-1} w_i(t) - \sum_{i=0}^{m-1}w_i(t) \one(\theta_i < \hat{f}_{\theta_i}(t))$, $\quad k^* = \max\{k: B_k \leq 0\}$
+        \State \textbf{Output}
+        \makebox[0pt][l]{$\displaystyle
+            \hat{P}_t = \frac{B_{k^*+1}}{B_{k^*+1} + |B_{k^*}|}\delta_{\frac{k^*}{m}} +
+            \frac{|B_{k^*}|}{B_{k^*+1} + |B_{k^*}|}\delta_{\frac{k^*+1}{m}}$
+        } \vspace{-0.1cm}\\
+        \State \textbf{2) Update the weights for each $S_{\theta_i}$}:
+            \State $w_i(t+1) \propto w_i(t) \exp\bigl(\eta \big(\mathbb{E}_{p \sim \hat{P}_t}[S_{\theta_i}(p, Y_t)] 
+            - S_{\theta_i}(\hat{f}_{\theta_i}(t), Y_t)\big)\bigr), \quad \forall i \in \{0, \ldots, m-1\};$ \vspace{-0.1cm}\\
+        \State \textbf{3) Update the best competitor function for each $S_{\theta_i}$}:
+        \State $v_{i,j}(t+1) = \frac{v_{i,j}(t) \exp\bigl(-\eta_f S_{\theta_i}(\hat{f}_{j}(t), Y_t)\bigr)}{\sum_{j=1}^F v_{i,j}(t) \exp\bigl(-\eta_f S_{\theta_i}(\hat{f}_{j}(t), Y_t)\bigr)}, \quad \forall i \in \{0, \ldots, m-1\}, j \in \{1, \ldots, F\};$
+        \For{$i = 0, \ldots, m-1$}
+          \State Sample $j_i(t+1) \in [F] \sim v_{i,\cdot}(t+1)$;
+          \State $\hat{f}_{\theta_i}(t+1) = f_{j_i(t+1)}$;
+        \EndFor
+    \EndFor
+    \end{algorithmic}
+    \end{algorithm}
+    
+  \begin{theorem}
+    \label{thm:omni-twoplayer_online_q}
+    For a quantile level $\alpha \in (0,1)$, let $S_\alpha$ denote the class of scoring functions with representation \eqref{eq:elem_score_q} with $H([0,1]) \leq 1$ (the set of \textit{all} scoring functions that are consistent for the $\alpha$-level quantile functional under mild regularity conditions). Consider a class of competitors $\cf$ where each forecaster $f \in \cf$ provides $\alpha$-level quantile forecasts. With the target values $Y_t$, forecaster predictions $f(t)$ for $t \in [T], f \in \cf$ each taking values in a discretized grid of size $m$ and the learning rate $\eta_w = O(\sqrt{\frac{\log m}{T}})$ and $\eta_f = O(\sqrt{\frac{\log |\cf|}{T}})$, the output $\hat{P}_t$ from Algorithm \ref{alg:omni-twoplayer_online_q} achieves the following omniprediction error:
+    \begin{align*}
+    \sup_{S \in S_\alpha,\, f \in \cf} \frac{1}{T} \sum_{t=1}^T \E_{p \sim \hat{P}_t} [S(p, Y_t)] - \E[S(f(t), Y_t)]
+    \leq O\left(\sqrt{\frac{\log m|\cf|}{T}}\right)
+    \end{align*}
+  \end{theorem}
+  
+  
+  \begin{proof}
+  Observe that $|S_{\alpha, \theta_i}| \leq 1$. Regret bound of hedge algorithm (Theorem 1.5 of \cite{hazanoco}) gives the following:
+  \begin{align}
+    \frac{1}{T} \sum_{t=1}^T \E_{j_i(t)}\left[S_{\alpha, \theta_i}(\hat{f}_{\theta_i}(t), Y_t) \right]
+    & \,\leq\, \min_{f \in \cf} \frac{1}{T} \sum_{t=1}^T S_{\alpha, \theta_i}(f(t), Y_t) + \eta_f + \frac{\log|\cf|}{T\eta_f} \label{ieq:hedge_f_update}
+  \end{align}
+  \begin{align}
+    \max_{i \in \{0, \ldots, m-1\}} \frac{1}{T} \sum_{t=1}^T 
+    & \E_{p\sim \hat{P}(X_t)}\left[ S_{\alpha, \theta_i}(p, Y_t) - S_{\alpha, \theta_i}(\hat{f}_{\theta_i}(t), Y_t) \right] \nonumber\\
+    & \leq \frac{1}{T} \sum_{t=1}^T \sum_{i=0}^{m-1} w_i(t) \, \E_{p\sim \hat{P}(X_t)}\left[ S_{\alpha, \theta_i}(p, Y_t) - S_{\alpha, \theta_i}(\hat{f}_{\theta_i}(t), Y_t) \right] + 4\eta_w + \frac{\log m}{T\eta_w} \label{ieq:hedge_w_update}
+  \end{align}
+  
+  Putting these altogether, we have:
+    \begin{align*}
+      & \sup_{S \in S_\alpha,\, f \in \cf} \frac{1}{T} \sum_{t=1}^T \E_{p \sim \hat{P}_t} [S(p, Y_t)] - S(f(t), Y_t) \\
+      & \underset{Lemma \ref{lem:discretize_single_q}}{=} \sup_{i \in \{0, \ldots, m-1\}, f \in \cf} \frac{1}{T} \sum_{t=1}^T \E_{p \sim \hat{P}_t} [S_{\alpha, \theta_i}(p, Y_t)] - S_{\alpha, \theta_i}(f(t), Y_t) \\
+      & \underset{Ieq. \eqref{ieq:hedge_f_update}}{\leq} \sup_i \frac{1}{T} \sum_{t=1}^T \E_{p \sim \hat{P}_t} [S_{\alpha, \theta_i}(p, Y_t)] - \E_{j_i(t)}\left[S_{\alpha, \theta_i}(\hat{f}_{\theta_i}(t), Y_t) \right] + O\left(\sqrt{\frac{\log|\cf|}{T}}\right) \\
+      & \underset{Ieq. \eqref{ieq:hedge_w_update}}{\leq} \sup_i \frac{1}{T} \sum_{t=1}^T \sum_{i=0}^{m-1} w_i(t) \, \E_{p\sim \hat{P}_t}\left[ S_{\alpha, \theta_i}(p, Y_t) - \E_{j_i(t)}\left[S_{\alpha, \theta_i}(\hat{f}_{\theta_i}(t), Y_t) \right] \right] + O\left(\sqrt{\frac{\log m|\cf|}{T}}\right) \\
+      & \underset{Lemma \ref{lem:minimax_single_q_neg}}{=} O\left(\sqrt{\frac{\log m|\cf|}{T}}\right).
+    \end{align*}
+  \end{proof}
+
+
+
+
+
+% Second quantile omniprediction algorithm and theorem 
+
+\begin{algorithm}
+    \caption{Two-player game based multiple quantile level online omniprediction} \label{alg:omni-twoplayer_online_multi_q}
+    \begin{algorithmic}[1]
+    \State \textbf{Data:} Data stream $\{Y_t\}_{t=1}^T$, quantile levels $\tau_1 < \tau_2 < ... < \tau_N$, hyperparameters $m, F \in \mathbb{N}$, $\eta_w, \eta_f > 0$, base forecaster predictions $\hat{f}_j^n(t)$: $\tau_n$-level quantile estimate of $f_j$ for $j \in [F]$ and $n \in [N]$;
+    \State For $t=1$,$w_i^n(t) = \frac{1}{mN}$, $\hat{f}_i^n(t) = f_1^n(t)$, for all $i \in \{0, \ldots, m-1\}$ and $n \in [N]$;
+    \State $v_{i,j}^n(1) = \frac{1}{F}$, for all $i \in \{0, \ldots, m-1\}$ and $j \in \{1, \ldots, F\}$ and $n \in [N]$;
+    \For{$t = 1, \ldots, n$}
+      \State \textbf{1) Make prediction at time $t$}:
+        \State Define $V_0 = V_N = 0$, $j_0^* = 0$, $j_N^* = m$;
+        \State Define $\one_i^s(t) = \indi{\theta_i < \hat{f}_i^s(t)}$ for $i \in \{0, \ldots, m-1\}$ and $s \in [N]$.
+        \For{$n=1, \ldots, N-1$}
+        \State Compute $V_n(j)$ for $j \in [m]$:
+          \(
+          V_n(j) = \sum_{i=j}^{m-1} \sum_{s=1}^{n} w_i^s \one_i^s(t) + \sum_{i=0}^{j-1} \sum_{s=n+1}^{N}  w_i^s (1 - \one_i^s(t))
+          \)
+        \State Compute $V_n$ and $j_n^*$:
+          \begin{align*}
+            V_n = \min_{j \in [m]} V_n(j), \qquad
+            j_n^* = \min\left\{j_{n-1}^* \leq j \leq m \mid V_n(j) = V_n \right\}
+          \end{align*}
+        \EndFor \vspace{-0.2cm}\\
+        \For{$n=1, \ldots, N$}
+          \If{$V_n(j_{n-1}^*) = V_n(j_n^*)$}
+            \State $\hat{P}_t^n = \delta_{j_{n-1}^*/m}$;
+          \Else
+            \State Define $B_k := \sum_{i=0}^{k-1} w_i^n(t) - \sum_{i=0}^{m-1}w_i^n(t) \one_i^n(t)$
+            \State Find $j_{n-1}^* \leq k_n < j_n^*$ s.t. $B_{k_n} < V_{n-1} - V_n \leq B_{k_n+1}$ (Existence proved in Lemma \ref{lem:Pn_def})
+            \State $\hat{P}_t^n = (1-C_n)\delta_{k_n/m} + C_n\delta_{((k_n+1)/m)}$, where $C_n = \left( V_{n-1} - V_n - B_{k_n} \right) / w_{k_n}^n$
+          \EndIf
+        \EndFor
+        \State \textbf{Output} $\hat{P}_t = \{\hat{P}_t^n\}_{n=1}^N$;  \vspace{-0.1cm}\\
+        \State \textbf{2) Update the weights for each $S_{i}^n = (\one(y<x)-\tau_n)(\one(\theta_i<x)-\one(\theta_i<y))$}:
+            \State $w_i^n(t+1) = \frac{w_i^n(t) \exp\bigl(\eta \big(\mathbb{E}_{p \sim \hat{P}_t^n}[S_i^n(p, Y_t)] 
+            - S_i^n(\hat{f}_i^n(t), Y_t)\big)\bigr)}{\sum_{i=0}^{m-1} \sum_{n=1}^N w_i^n(t) \exp\bigl(\eta \big(\mathbb{E}_{p \sim \hat{P}_t^n}[S_i^n(p, Y_t)] - S_i^n(\hat{f}_i^n(t), Y_t)\big)\bigr)}, \forall n \in [N], i \in \{0, \ldots, m-1\};$ \vspace{-0.1cm}\\
+        \State \textbf{3) Update the best competitor function for each $S_{i}^n$}:
+        \State $v_{i,j}^n(t+1) = \frac{v_{i,j}^n(t) \exp\bigl(-\eta_f S_i^n(\hat{f}_j^n(t), Y_t)\bigr)}{\sum_{j=1}^F v_{i,j}^n(t) \exp\bigl(-\eta_f S_i^n(\hat{f}_j^n(t), Y_t)\bigr)}, \quad \forall j \in [F], n \in [N], i \in \{0, \ldots, m-1\};$
+        \For{$n = 1, \ldots, N$}
+          \For{$i = 0, \ldots, m-1$}
+            \State Sample $j_i^n(t+1) \in [F] \sim v_{i,\cdot}^n(t+1)$ and update $\hat{f}_i^n(t+1) = f_{j_i^n(t+1)}^n(t+1)$;
+          \EndFor
+        \EndFor
+    \EndFor
+    \end{algorithmic}
+    \end{algorithm}
+    
+
+
+
+%%%% More on decomposition of consistent scoring functions
+
+\begin{theorem}[Section 4 in \cite{Saerens_2000}]
+  Let the loss function $\ell$ satisfies the following conditions:
+  \begin{enumerate}
+      \item[(i)] $\ell(y, y) = 0$ for all $y \in \cy$,
+      \item[(ii)] $\ell(y_1, y_2) \geq 0$ for all $y_1, y_2 \in \cy$,
+      \item[(iii)] $\ell(y_1, y_2)$ is twice continuously differentiable in terms of all its arguments, except at $y_1 = y_2$ where it is simply continuous.
+  \end{enumerate}
+  Then, the following two statements are equivalent.
+  \begin{enumerate}
+      \item $\ell$ of form
+          \begin{align}\label{eq:consistent-repr}
+          \ell(t, y) = (\one(y<t) - \alpha)(g(t)-g(y)),
+          \end{align}
+          where $g$ is a differentiable function with $g'(y) > 0$ for all $y \in \cy$.
+      \item $\ell$ is consistent for the $\alpha$-level quantile functional.
+  \end{enumerate}
+\end{theorem}
+Differentiability here is not necessary for the proof. More general result without assuming smoothness is given in \cite{Thomson_1979}, page 372.
+  
+
+
+%%%% Summary of Ziegel paper
+
+Note: \cite{osband1985} considers $F \in \cf$ to be a non-negative measures on a finite domain. \cite{fissler2016multiq} extends this to a broader class of distribution functions on $\R^d$.
+
+\begin{theorem}[Theorem 3.2 in \cite{fissler2016multiq}, Extension of Theorem 2.1 in \cite{osband1985}]
+Let $\cf$ be a convex class of distribution functions on $\mathsf{O} \subseteq \R^d$. Let $T: \cf \to \mathsf{A} \subseteq \R^k$ be a surjective, elicitable and identifiable functional with a strict $\cf$-identification function $V: \mathsf{A} \times \mathsf{O} \to \R^k$ and a strictly $\cf$-consistent scoring function $S: \mathsf{A} \times \mathsf{O} \to \R$. If the assumptions (V1) and (S1) hold, then there exists a matrix-valued function $h: \mathrm{int}(\mathsf{A}) \to \R^{k \times k}$ such that for $l \in \{1, \ldots, k\}$
+\begin{align}
+\partial_l \bar{S}(x, F) = \sum_{m=1}^{k} h_{lm}(x) \bar{V}_m(x, F)
+\end{align}
+for all $x \in \mathrm{int}(\mathsf{A})$ and $F \in \cf$. If in addition, assumption (V2) holds, then $h$ is continuous. Under the additional assumptions (V3) and (S2), the function $h$ is locally Lipschitz continuous.
+\end{theorem}
+
+Theorem above establish necessary condition on the level of expected score $\bar{S}(x,F)$. If the class $\cf$ is rich enough (F1) and the scoring and identification function are smooth enough (VS1), we have the following necessary condition for $S$ which holds pointwise.
+
+\begin{prop}[Proposition 3.5 in \cite{fissler2016multiq}]
+Let $\cf$ be convex. Assume that $\mathrm{int}(\mathsf{A}) \subseteq \R^k$ is a star domain and let $T: \cf \to \mathsf{A}$ be a surjective, elicitable and identifiable functional with a strict $\cf$-identification function $V: \mathsf{A} \times \mathsf{O} \to \R^k$ and a strictly $\cf$-consistent scoring function $S: \mathsf{A} \times \mathsf{O} \to \R$. Suppose that assumptions (V1), (V2), (S1), (F1) and (VS1) hold. Let $h$ be the matrix valued function appearing at (3.2). Then, the scoring function $S$ is necessarily of the form
+\begin{align}
+S(x, y) = \sum_{r=1}^{k} \sum_{m=1}^{k} \int_{z_r}^{x_r} h_{rm}(x_1, \ldots, x_{r-1}, v, z_{r+1}, \ldots, z_k) \times V_m(x_1, \ldots, x_{r-1}, v, z_{r+1}, \ldots, z_k, y) \, dv + a(y)
+\end{align}
+for almost all $(x, y) \in \mathsf{A} \times \mathsf{O}$ for some star point $z = (z_1, \ldots, z_k) \in \mathrm{int}(\mathsf{A})$ and some $\cf$-integrable function $a: \mathsf{O} \to \R$. On the level of the expected score $\bar{S}(x, F)$, the equation holds for all $x \in \mathrm{int}(A)$, $F \in \hat{\cf}$.
+\end{prop}
+
+\paragraph{Assumption (V4).} Let assumption (V3) hold. For all $r \in \{1, \ldots, k\}$ and for all $t \in \mathrm{int}(\mathsf{A}) \cap T(\cf)$ there are $F_1, F_2 \in T^{-1}(\{t\})$ such that
+\[
+\partial_l \bar{V}_l(t, F_1) = \partial_l \bar{V}_l(t, F_2) \quad \forall l \in \{1, \ldots, k\} \setminus \{r\}, \qquad \partial_r \bar{V}_r(t, F_1) \neq \partial_r \bar{V}_r(t, F_2).
+\]
+
+Then, Proposition 4.1 and Corollary 4.2 in \cite{fissler2016multiq} shows that with additional assumption (V4) above, $h$ is necessarily diagonal.
+\begin{theorem}[Corollary 4.2 in \cite{fissler2016multiq}]
+Let $\cf$ be convex. Suppose that $T = (T_1, \ldots, T_k): \cf \to \mathsf{A}$ is a functional with 1-identifiable components having oriented strict $\cf$-identification functions $V_m: \mathsf{A_m} \times \mathsf{O} \to \R$. Assume the interior of $\mathsf{A}:=T(\cf) \subseteq \mathsf{A}_1 \times \cdots \times \mathsf{A}_k$ is a star domain and that assumptions (V1), (V3), (V4), (S2), (F1) and (VS1) hold. Then, a scoring function $S: \mathsf{A} \times \mathsf{O} \to \R$ is strictly $\cf$-consistent for $T$ if and only if it is of the form
+\begin{align}
+    S(x_1, \ldots, x_k, y) = \sum_{m=1}^{k} S_m(x_m, y),
+\end{align}
+for almost all $(x,y) \in \mathsf{A} \times \mathsf{O}$, where $S_m: \mathsf{A}_m \times \mathsf{O} \to \R$, $m \in \{1, \ldots, k\}$, are strictly $\cf$-consistent scoring functions for $T_m$.
+\end{theorem}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+%%%%%%%%%%%
+% Multi-quantile old version
+%%%%%%%%%%%
+
+
+
+% Similarly to previous section, we define forecasts $\{\hat{f}_{\theta_i}^\tau\}_{i=0}^{m-1}$ that empirically minimized the losses $\{S_{\tau, \theta_i}\}_{i=0}^{m-1}$ for $\tau=\alpha, \beta$. For given $P \in \Delta_m$, denote the $\tau$-level quantile of $P$ as $P_\tau$. Then, consider $\cd(\Delta_m)$, the set of distributions over forecast $P \in \Delta_m$. The joint minimax program we want to solve is
+% \[
+% \min_{\tilde{P} \in \cd(\Delta_m)} \max_{P_y \in \Delta_m} \sum_{\tau \in \{\alpha, \beta\}}\sum_{i=0}^{m-1} w_i^\tau \E_{P\sim \tilde{P}, Y \sim P_y}[S_{\tau,\theta_i}(q_\tau(P),Y) - S_{\tau,\theta_i}(\hat{f}_{\theta_i}^\tau,Y)].
+% \]
+
+% Similarly to Lemma \ref{lem:minimax_single_q_neg}, we have the following lemma:
+% \begin{lemma}
+% \[
+% \min_{P \in \Delta_m} \max_{P_y \in \Delta_m} \sum_{\tau \in \{\alpha, \beta\}}\sum_{i=0}^{m-1} w_i^\tau \E_{p\sim P, Y \sim P_y}[S_{\tau,\theta_i}(q_\tau(p),Y) - S_{\tau,\theta_i}(\hat{f}_{\theta_i},Y)] 
+% \leq 0
+% \]
+% \end{lemma}
+% \begin{proof}
+% Similar to the proof of Lemma \ref{lem:minimax_single_q_neg}.
+% \end{proof}
+
+% Notice that the expection only depends on $\tilde{P}$ through $q_\alpha(P)$ and $q_\beta(P)$. Therefore, with abbreviating $\hat{f}_{\theta_i}^\tau,Y$ as $\hat{f}_i^\tau$, we can rewrite the program as
+% \begin{align}\label{eq:multi_minimax_program}
+% \min_{P_\alpha, P_\beta \in \Delta_m} \max_{P_y \in \Delta_m} \sum_{\tau \in \{\alpha, \beta\}}\sum_{i=0}^{m-1} w_i^\tau \E_{p_\tau \sim P_\tau, Y \sim P_y}[S_{\tau,\theta_i}(p_\tau,Y) - S_{\tau,\theta_i}(\hat{f}_i^\tau,Y)],
+% \end{align}
+% subject to the constraint $p_\alpha \leq p_\beta$. To provide a roadmap: to satisfy this constraint, we first solve the minimax program for $P_\alpha$ and $P_\beta$, where it can be proved that the resulting solutions satisfy the condition that $P_\alpha$ is stochastically smaller than $P_\beta$. Finally, we couple $P_\alpha$ and $P_\beta$ in increasing order to form a joint distribution that maintains the condition $p_\alpha \leq p_\beta$.
+
+% Now, we solve the joint minimax program.
+% \begin{lemma}\label{lem:minimax_sol_two_q}
+% Given $\hat{f}_i^\tau$ for $i =0,...,m\!-\!1$ and $\tau = \alpha, \beta$, define the quantity $V$ as
+% \begin{align} \label{eq:V_def}
+% V = \min_{j \in [m]} \left( \sum_{i=j}^{m-1} w_i^\alpha \indi{\theta_i < \hat{f}_i^\alpha} + \sum_{i=0}^{j-1} w_i^\beta (1 - \indi{\theta_i < \hat{f}_i^\beta})\right) \geq 0
+% \end{align}
+% and let $j^*$ be \textbf{any} index that minimizes the quantity.
+
+% Then, the value of the minimax program is $-(\beta-\alpha)V \leq 0$ and the solution is given by 
+% \begin{align*}
+%   P_y^* &= \alpha\delta_0 + \beta\delta_1 + (\beta-\alpha)\delta_{j^*/m} \\
+%   P^*_\tau &= C_\tau \delta_{k_\tau^*/m} + (1-C_\tau) \delta_{(k_\tau^*+1)/m}, \quad \tau = \alpha, \beta,
+% \end{align*}
+% where
+% \begin{align*}
+%   k_\alpha^* &= \min\left\{k \mid \sum_{i=0}^k w_i^\alpha \geq \sum_{i=0}^{m-1} w_i^\alpha \indi{\theta_i < \hat{f}_i^\alpha} - V \right\} \\
+%   k_\beta^* &= \min\left\{k \mid \sum_{i=0}^k w_i^\beta > \sum_{i=0}^{m-1} w_i^\beta \indi{\theta_i < \hat{f}_i^\beta} + V \right\} \\
+%   C_\alpha & = \frac{1}{w_{k_\alpha^*}^\alpha} \left( \sum_{i=0}^{k_\alpha^*} w_i^\alpha - \left(\sum_{i=0}^{m-1} w_i^\alpha \indi{\theta_i < \hat{f}_i^\alpha} - V\right)\right)\\
+%   C_\beta & = \frac{1}{w_{k_\beta^*}^\beta} \left( \sum_{i=0}^{k_\beta^*} w_i^\beta - \left(\sum_{i=0}^{m-1} w_i^\beta \indi{\theta_i < \hat{f}_i^\beta} + V\right)\right),
+% \end{align*}
+% Moreover, for any $j^*$ that achieves the minimum in \eqref{eq:V_def}, it holds that $k_\alpha^* < j^* \leq k_\beta^*$, which implies that $P_\alpha$ is stochastically smaller than $P_\beta$.
+% \end{lemma}
+
+% % PROOF START
+% \begin{proof}
+% We first prove that $k_\alpha^* < j^* \leq k_\beta^*$. Plugging in  
+% \[
+% V = \sum_{i=j}^{m-1} w_i^\alpha \indi{\theta_i < \hat{f}_i^\alpha} + \sum_{i=0}^{j-1} w_i^\beta (1 - \indi{\theta_i < \hat{f}_i^\beta}),
+% \] 
+% into the definition of $k_\alpha^*$, we observe that $j^*-1$ satisfies the inequality and thus $k_\alpha^* \leq j^*-1$.
+% \begin{align*}
+% \sum_{i=0}^{j^*-1} w_i^\alpha
+% & \geq \sum_{i=0}^{m-1} w_i^\alpha \indi{\theta_i < \hat{f}_i^\alpha} - V \\ 
+% & = \sum_{i=0}^{m-1} w_i^\alpha \indi{\theta_i < \hat{f}_i^\alpha} - \sum_{i=j}^{m-1} w_i^\alpha \indi{\theta_i < \hat{f}_i^\alpha} - \sum_{i=0}^{j-1} w_i^\beta (1 - \indi{\theta_i < \hat{f}_i^\beta}, 
+% \end{align*}
+% which is equivalent to 
+% \begin{align*}
+% \sum_{i=0}^{j^*-1} w_i^\alpha (1-\indi{\theta_i < \hat{f}_i^\alpha}) + w_i^\beta (1-\indi{\theta_i < \hat{f}_i^\beta}) \geq 0.
+% \end{align*}
+% This inequality holds since indicators are always smaller than or equal to $1$.
+
+% Similarly, we can show that $j^*-1$ does not satisfy the inequality inside the definition of $k_\beta^*$, which implies that $k_\beta^* > j^*-1$ and thus $k_\beta^* \geq j^*$.
+% \smallskip
+
+% Now, we prove that $O(P_\alpha^*, P_\beta^*, P_y^*)$ is the minimax solution. Denote the objective function by 
+% \[O(P_\alpha, P_\beta, P_y) = \sum_{\tau \in \{\alpha, \beta\}}\sum_{i=0}^{m-1} w_i^\tau \E_{p_\tau \sim P_\tau, Y \sim P_y}[S_{\tau,\theta_i}(p_\tau,Y) - S_{\tau,\theta_i}(\hat{f}_i^\tau,Y)].
+% \]
+% In a similar vein to the proof of Lemma \ref{lem:minimax_sol_single_q}, we show $O(P_\alpha^*, P_\beta^*, P_y^*) = \max_{P_y} O(P_\alpha^*, P_\beta^*, P_y)$ then show $O(P_\alpha^*, P_\beta^*, P_y^*) = \min_{P_\alpha, P_\beta \in \Delta_m} O(P_\alpha, P_\beta, P_y^*)$.
+
+% Following the decomposition \eqref{eq:oppy_q}, $O(P_\alpha, P_\beta, P_y)$ can be written as
+% \[
+% O(P_\alpha, P_\beta, P_y) = \sum_{\tau \in \{\alpha, \beta\}}\sum_{i=0}^{m-1} w_i^\tau \E_{p_\tau \sim P_\tau, Y \sim P_y}[\one(Y \leq \theta_i < p_\tau) - \tau\one(\theta_i<p_\tau) - \one(Y \leq \theta_i < \hat{f}_i^\tau)] + C_\tau,
+% \]
+% where $C_\tau =\tau \sum_{i=0}^{m-1} q_i^\tau \indi{\theta_i < \hat{f}_i^\tau}$ which does not depend on $P_\tau$ or $P_y$.
+
+% Using this decomposition, we prove $O(P_\alpha^*, P_\beta^*, P_y^*) = \max_{P_y} O(P_\alpha^*, P_\beta^*, P_y)$. Let $P_y(\frac{j}{m})=p_{yj}$ for $j=0,...,m$. Then, $O(P_\alpha^*, P_\beta^*, P_y)$ is rephrased as the following:
+% \begin{align*}
+% O(P_\alpha^*, P_\beta^*, P_y) 
+% & = \sum_{\tau \in \{\alpha, \beta\}}\E_{P_\tau^*} \left[\sum_j p_{yj} \sum_{i=j}^{m-1} w_i^\tau \left( \indi{\theta_i < p_\tau} - \indi{\theta_i < \hat{f}_i^\tau}\right)\right] + C(P_\tau^*),
+% \end{align*}
+% where $C(P_\tau^*)$ only depends on $P_\tau^*$ and does not depend on $P_y$.
+
+% Plugging in $P_\tau^*$, the summand can be expressed as 
+% \begin{align*}
+% A_j := \E_{P_\tau^*} & \left[\sum_{i=j}^{m-1} w_i^\tau \left( \indi{\theta_i < p_\tau} - \indi{\theta_i < \hat{f}_i^\tau}\right)\right] \\
+% & = 
+% \begin{cases}
+% -\sum_{i=0}^{j-1} w_i^\tau (1-\indi{\theta_i < \hat{f}_i^\tau}) + V \indi{\tau=\alpha} - V\indi{\tau=\beta} & \quad j \leq k_\tau^* \\
+% - \sum_{i=j}^{m-1} w_i^\tau \indi{\theta_i < \hat{f}_i^\tau} & \quad j > k_\tau^* \\
+% \end{cases} 
+% \end{align*}
+
+% This leads to 
+% \begin{align*}
+% A_j = 
+% \begin{cases}
+% - \sum_{i=0}^{j-1} w_i^\alpha (1-\indi{\theta_i < \hat{f}_i^\alpha}) - \sum_{i=0}^{j-1} w_i^\beta (1-\indi{\theta_i < \hat{f}_i^\beta}) & \quad j \leq k_\alpha^* \\
+% - \sum_{i=j}^{m-1} w_i^\alpha \indi{\theta_i < \hat{f}_i^\alpha} - \sum_{i=j}^{m-1} w_i^\beta \indi{\theta_i < \hat{f}_i^\beta} & \quad j > k_\beta^* \\
+% - \sum_{i=j}^{m-1} w_i^\alpha \indi{\theta_i < \hat{f}_i^\alpha} - \sum_{i=0}^{j-1} w_i^\beta (1-\indi{\theta_i < \hat{f}_i^\beta}) + V & \quad k_\alpha^* < j \leq k_\beta^*
+% \end{cases}
+% \end{align*}
+% Notice that $A_j$ is non-increasing on $j \leq k_\alpha^*$ and non-decreasing on $j > k_\beta^*$. $A_0 = 0$ and $A_m = 0$ is the maximum value of $A_j$ in these ranges, respectively. Also note that $A_j \leq 0$ for $k_\alpha^* < j \leq k_\beta^*$ due to the definition of $V$ and $A_{j^*} = 0$ since $k_\alpha^* < j^* \leq k_\beta^*$.
+
+% To sum up, $P_y^*$ achieves the maximum value of $O(P_\alpha^*, P_\beta^*, P_y)$ since it puts mass only on $j=0, j^*, m$, which are the points that maximize $A_j$.
+
+% Lastly, we show that $O(P_\alpha^*, P_\beta^*, P_y^*) = \min_{P_\alpha, P_\beta} O(P_\alpha, P_\beta, P_y^*)$. This follows directly from the consistency of $S_{\tau,\theta_i}$ losses, since $k_\alpha^* / m$ and $(k_\alpha^*+1) / m$ are both $\alpha$-level quantile of $P_y^*$ and $k_\beta^* / m$ and $(k_\beta^*+1) / m$ are both $\beta$-level quantile of $P_y^*$.
+% \end{proof}
+% % PROOF END
+
+% \paragraph{Minor details}
+% In definition of $k_\alpha^*$ and $k_\beta^*$, we use $\geq$ and $>$, respectively. If $k_\alpha^*$ is also defined using $>$, the difference occurs when there exists $j$ that satisfies $\sum_{i=0}^{j-1} w_i^\alpha = \sum_{i=0}^{m-1} w_i^\alpha \indi{\theta_i < \hat{f}_i^\alpha} - V$. 
+% \begin{enumerate}
+%   \item $\forall i \in [m], w_i^\alpha > 0$. In this case, $k_\alpha^*$ differs by 1, but $P_\alpha^* = \delta_{j/m}$ remains the same.
+%   \item $\exists i \in [m], w_i^\alpha = 0$. In this case, $P_\alpha^*$ is also different. For example, let $w_0^\alpha = \alpha$, $w_1^\alpha = 0$, $w_2^\alpha > 0$, then definition using $\geq$ gives $P_\alpha^* = \delta_{1/m}$ (smallest possible $\alpha$-level quantile) while definition using $>$ gives $P_\alpha^* = \delta_{2/m}$ (largest possible $\alpha$-level quantile).
+% \end{enumerate}
+
+
+% \subsection{Solving joint minimax program for arbitrary number of quantile levels}
+% Now we extend the result to the case of arbitrary number of quantile levels. We denote $N$ as the number of quantile levels and $\tau_1 < \tau_2 < ... < \tau_N$ as the quantile levels. 

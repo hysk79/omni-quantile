@@ -1,94 +1,156 @@
 \section{Omniprediction for single quantile level forecasts}\label{sec:single_q}
 
-This section provides a sample efficient algorithm for omniprediction of single quantile level forecasts, both in batch and online settings. The omniprediction objective we want to minimize is given by
-\begin{align*}
-  \sup_{S \in S_\alpha,\, f \in \cf} \frac{1}{T} \sum_{t=1}^T \E_{p \sim \hat{P}(X_t)} [S(p, Y_t)] - \E[S(f(X_t), Y_t)]
-\end{align*}
-where $S_\alpha$ is the class of \textit{all} scoring functions that are consistent for the $\alpha$-level quantile functional and $\cf$ is a set of competitors.
+% This section provides an algorithm for omniprediction of single $\alpha$-level quantile level forecasts under online settings. The goal is to come up with $\hat{P}_t$ that minimizes the following omniprediction objective:
+% \begin{align}\label{eq:omni_objective_single_q}
+%   \sup_{S \in S_\alpha,\, f \in \cf} \frac{1}{T} \sum_{t=1}^T \E_{p \sim \hat{P}_t} [S(p, Y_t)] - \E[S(f(t), Y_t)],
+% \end{align}
+% where $S_\alpha$ is the class of \textit{all} scoring functions that are consistent for the $\alpha$-level quantile functional and $\cf$ is a set of competitors. Competitors can also viewed as base forecasters that provide $\alpha$-level quantile forecasts. Then, the predictions $\hat{P}_t$ can be viewed as (randomized) $\alpha$-level quantile forecast that minimizes all consistent scoring functions, with respect to given base forecasters $\cf$. This can also be viewed as an implicit ensemble of base forecasters $\cf$.
+% To minimize the objective \eqref{eq:omni_objective_single_q}, we introduce a variant of Algorithm \ref{alg:omni-twoplayer}. 
 
-Section \ref{subsec:decomp_single_q} discusses the previous result from \cite{ehm2016binarydecomp} on decomposition of consistent scoring rules, which is an analogous notion of propriety for single quantile forecasts. 
-Using this, we introduce a new algorithm that achieves $\co(\sqrt{\log(mF)/T})$ omniprediction error bound, where $m$ is the number of discretization points and $F$ is the number of base forecasters. To do so, Section \ref{subsec:discretization} first discusses the discretization of predictions and forecasts that induces low (no) discretization error. 
-Then, Section \ref{subsec:omni_single_q} states the sample efficient algorithm for omniprediction of single quantile forecasts, both in batch and online settings.
+% Algorithm \ref{alg:omni-twoplayer_online} shows the high-level idea of the algorithm. At each time $t$, the algorithm solves a minimax program and outputs a probability distribution $\hat{P}_t$ (distributed over two consecutive grid points) as a $\alpha$-level quantile forecast. Then, the algorithm updates the weights $w_{ib}$ to account for which loss function we should care more in next iteration.
 
+% While Algorithm \ref{alg:omni-twoplayer} takes the best competitor for each elementary score $S_\theta$ as input, Algorithm \ref{alg:omni-twoplayer_online_q} takes all predictions made by competitors as input, and the best competitor for each elementary score $S_{\alpha, i}$ is discovered and updated inside the algorithm. This removes the requirement of additional hold-out set for selecting the best competitor. To do so, Algorithm \ref{alg:omni-twoplayer_online_q} considers the set of competitors $\cf=\{f_b\}_{b=1}^F$ to be finite. That said, the algorithm can be easily modified to a version that accommodates more general $\cf$, that takes the best competitor for each elementary score $S_{\alpha, i}$ pre-computed outside the algorithm. Details can be found in Appendix \ref{sec:diff_omni_algos}.
 
-\subsection{Decomposition of 'proper' scoring rules for single quantile forecasts} \label{subsec:decomp_single_q}
-Proper scoring rules incentivize forecasters to report their true predictive distribution. An analogous notion of propriety also exists for evaluating individual quantile forecasts.
-
-Let $\cf_0$ denote the class of the probability measures on the Borel-Lebesgue sets of the real line $\R$. A function $S$ defined on $D=D_1 \times D_2 \subseteq \R^2$ is called a scoring function if $S(x,y) \geq 0$ for all $(x,y) \in D$ with $S(x,y)=0$ if $x=y$. 
-
-Consider a functional $F \mapsto T(F) \subseteq D_1$, which can be set-valued. We define an analogous notion of propriety for single point predictions (e.g., the mean or a quantile)
-
-\begin{defi}[Consistency]\label{def:consistency}
-The scoring function $S$ is \textbf{consistent} for a functional $T$ relative to the class $\cf$ if 
-\[
-\E_F[S(t,Y)] \leq \E_F[S(x,Y)]
-\]
-for all probability measures $F \in \cf$, all $t \in T(F)$, and all point forecasts $x \in D_1$.
-\end{defi}
+% More details will follow throughout this section. In Section \ref{subsec:decomp_single_q}, we discuss the decomposition of $S_\alpha$ into a set of elementary scores $S_{\alpha, i}$, $i \in \{0, \ldots, m-1\}$. In Section \ref{subsec:discretization}, we discuss the discretization of $S_\alpha$, predictions, and forecasts that induces low (no) discretization error. Lastly, in Section \ref{subsec:omni_single_q}, we provide a closed-form solution for the minimax program and put the ingredients together and introduce the omniprediction algorithm for single $\alpha$-level quantile forecasts.
 
 
-\begin{theorem}[Section 4 in \cite{Saerens_2000}]
-  Let the loss function $\ell$ satisfies the following conditions:
-  \begin{enumerate}
-      \item[(i)] $\ell(y, y) = 0$ for all $y \in \cy$,
-      \item[(ii)] $\ell(y_1, y_2) \geq 0$ for all $y_1, y_2 \in \cy$,
-      \item[(iii)] $\ell(y_1, y_2)$ is twice continuously differentiable in terms of all its arguments, except at $y_1 = y_2$ where it is simply continuous.
-  \end{enumerate}
-  Then, the following two statements are equivalent.
-  \begin{enumerate}
-      \item $\ell$ of form
-          \begin{align}\label{eq:consistent-repr}
-          \ell(t, y) = (\one(y<t) - \alpha)(g(t)-g(y)),
-          \end{align}
-          where $g$ is a differentiable function with $g'(y) > 0$ for all $y \in \cy$.
-      \item $\ell$ is consistent for the $\alpha$-level quantile functional.
-  \end{enumerate}
-\end{theorem}
-Differentiability here is not necessary for the proof. More general result without assuming smoothness is given in \cite{Thomson_1979}, page 372.
-  
-
-\paragraph{(Rephrased: From \cite{gneiting2011point})}
-Up to mild regularity conditions, a scoring function $S$ is consistent for the quantile functional at level $\alpha \in (0,1)$ relative to $\cf_0$ if and only if it is of the form 
-\begin{align}\label{eq:q_consistent_score}
-S(x,y) = (\one(y<x)-\alpha)(g(x)-g(y)),    
+This section presents an algorithm for omniprediction of a single $\alpha$-level quantile. The goal is to construct predictions $\hat{P}_t$ that minimize the following omniprediction objective:
+\begin{align}\label{eq:omni_objective_single_q}
+  \sup_{S \in S_\alpha,\, f \in \cf} \frac{1}{T} \sum_{t=1}^T \E_{p \sim \hat{P}_t} [S(p, Y_t)] - \E[S(f(t), Y_t)],
 \end{align}
-where $g$ is non-decreasing. \todo{Note that $S$ is \textbf{right-continuous} in first and second component.}
+where $S_\alpha$ denotes the class of \textit{all} scoring functions that are consistent for the $\alpha$-level quantile functional, and $\cf$ is a finite set of competitors. These competitors can be viewed as base forecasters that provide $\alpha$-level quantile predictions. Accordingly, the outputs $\hat{P}_t$ can be interpreted as (randomized) implicit ensemble of the base forecasters that perform well across all consistent scoring functions. 
 
-Let $\ci$ denote the class of all \textbf{left-continuous} non-decreasing real functions, and $\cs_\alpha$ denote the class of the scoring functions $S$ of the form \eqref{eq:q_consistent_score} where $g \in \ci$.
+To minimize the objective in \eqref{eq:omni_objective_single_q}, we introduce a variant of Algorithm~\ref{alg:omni-twoplayer}. Algorithm~\ref{alg:omni-twoplayer_online} outlines the high-level procedure. At each time step $t$, the algorithm solves a minimax problem and outputs a probability distribution $\hat{P}_t$ (supported on one or two consecutive grid points) as an $\alpha$-level quantile forecast. The weights $w_{ib}$ are then updated to reflect which loss functions should be emphasized in the next iteration. It's worth noting that Algorithm \ref{alg:omni-twoplayer_online} is different in its style from Algorithm \ref{alg:omni-twoplayer} in how to discover the best base forecaster for each elementary score. Instead of having $\sup_{f\in \cf}$ inside the minimax program, Algorithm \ref{alg:omni-twoplayer_online} computes a weighted sum of losses from each base forecaster and update the weights every time step. Although we mainly focus on finite $\cf$ here, infinite $\cf$ can also be accommodated by using a hold-out set approach as \cite{isaac2025omni} proposes.
+
+The remainder of this section provides the necessary components in detail. In Section~\ref{subsec:decomp_single_q}, we present a prior work on the decomposition of $S_\alpha$ into a set of elementary scores $S_{\alpha, i}$ for $i \in [m]$. This simplifies our task of minimizing loss over all consistent scoring functions into minimizing loss over a one-dimensional set of score functions. In Section~\ref{subsec:discretization}, we discuss the discretization of predictions and forecasts, showing that such discretization allows no approximation error when approximating any element in $S_\alpha$ as a weighted sum of elementary scores. Finally, in Section~\ref{subsec:omni_single_q}, we derive a closed-form solution to the minimax problem and combine these ingredients to present the omniprediction algorithm for single $\alpha$-level quantile forecasts.
+
+
+
+
+\begin{algorithm}
+  \caption{Online version of two-player game method} \label{alg:omni-twoplayer_online}
+  \begin{algorithmic}[1]
+  \State \textbf{Data:} Data stream $\{Y_t\}_{t=1}^T$, Grid size $m \in \mathbb{N}$, Learning rate $\eta > 0$, Base forecasters $\cf = \{f_b\}_{b=1}^{B}$.
+  \State \textbf{Initialize:} $w_{ib}(1) = \frac{1}{mB}$, for all $i \in [m], b \in [B]$;
+  \For{$t = 1, \ldots, T$}
+  \State \textbf{1) Make prediction at time $t$}:
+  \begin{align*} %\label{eq:minimax_Pt_single_q}
+  \hat{P}_t = \arg\min_{P \in \Delta_m} \max_{P_y \in \Delta_m} \sum_{i=1}^m \sum_{b=1}^B w_{ib}\E_{p\sim P, Y \sim P_y}[S_{\alpha, i}(p,Y) - S_{\alpha, i}(f_b(t),Y)];
+  \end{align*}
+  \State \textbf{2) Update the weights $w_{ib}$}:
+  \[
+  w_{ib}(t+1) \propto w_{ib}(t) \exp\bigl(\eta \big(\mathbb{E}_{p \sim \hat{P}_t}[S_{\alpha, i}(p, Y_t)] 
+  - S_{\alpha, i}(f_b(t), Y_t)\big)\bigr), \quad \forall i \in [m], b \in [B];
+  \]
+  \EndFor
+  \end{algorithmic}
+\end{algorithm}
+
+
+
+% Proper scoring rules incentivize forecasters to report their true predictive distribution. An analogous notion of propriety also exists for evaluating individual quantile forecasts.
+
+% Let $\cf_0$ denote the class of the probability measures on the Borel-Lebesgue sets of the real line $\R$. A function $S$ defined on $D=D_1 \times D_2 \subseteq \R^2$ is called a scoring function if $S(x,y) \geq 0$ for all $(x,y) \in D$ with $S(x,y)=0$ if $x=y$. 
+
+% Consider a functional $F \mapsto T(F) \subseteq D_1$, which can be set-valued. We define an analogous notion of propriety for single point predictions (e.g., the mean or a quantile)
+
+% \begin{defi}[Consistency, \cite{murphy1985consistency}, \cite{gneiting2011point}]\label{def:consistency}
+% The scoring function $S$ is \textbf{consistent} for a functional $T$ relative to the class $\cf$ if 
+% \[
+% \E_F[S(t,Y)] \leq \E_F[S(x,Y)]
+% \]
+% for all probability measures $F \in \cf$, all $t \in T(F)$, and all point forecasts $x \in D_1$.
+% \end{defi}
+
+% Characterization of consistent scoring functions for single quantile forecasts have been studied by \cite{savage1971preferences}, \cite{thompson1979point} and \cite{gneiting2011point}. While the original versions from these studies entail more details, \cite{ehm2016binarydecomp} presents a summary of these results as follows:
+
+% \paragraph{(Rephrased: From \cite{gneiting2011point})}
+% Up to mild regularity conditions, a scoring function $S$ is consistent for the quantile functional at level $\alpha \in (0,1)$ relative to $\cf_0$ if and only if it is of the form 
+% \begin{align}\label{eq:q_consistent_score}
+% S(x,y) = (\one(y<x)-\alpha)(g(x)-g(y)),    
+% \end{align}
+% where $\cf_0$ denotes the class of the probability measures on the Borel-Lebesgue sets of the real line $\R$, and $g$ is non-decreasing. \todo{Note that $S$ is \textbf{right-continuous} in first and second component.}
+
+% Let $\ci$ denote the class of all \textbf{left-continuous} non-decreasing real functions, and $\cs_\alpha$ denote the class of the scoring functions $S$ of the form \eqref{eq:q_consistent_score} where $g \in \ci$.
+
+% \begin{theorem}[Theorem 1a in \cite{ehm2016binarydecomp}]
+%      Any member of the class $\cs_\alpha$ admits a representation of the form 
+%      \begin{align}\label{eq:elem_score_q}
+%      S(x,y) = \int_{-\infty}^{\infty} S_{\alpha,\theta}(x,y) dH(\theta),
+%      \end{align}
+%      where $H$ is a nonnegative measure and 
+%      \[
+%      S_{\alpha, \theta}(x,y) = (\one(y<x)-\alpha)(\one(\theta<x)-\one(\theta<y)) 
+%      =
+%      \begin{cases}
+%          1-\alpha, & y \leq \theta < x,  \\
+%          \alpha, & x \leq \theta < y, \\
+%          0, & \text{otherwise}.
+%      \end{cases}
+%      \]
+%      The mixing measure $H$ is unique and satisfies $dH(\theta)=dg(\theta)$ for $\theta\in\R$. We also have $H(x)-H(y) = S(x,y)/(1-\alpha)$.
+% \end{theorem}
+
+% \paragraph{Choquet representation} If we restrict $g\in \ci_1 \subset \ci$, where $\ci_1$ contains $g$ such that $\lim_{x\to-\infty}g(x)=0$ and $\lim_{x\to\infty}g(x)=1$, and denote the corresponding class of scoring functions as $\cs_{\alpha, 1}$, $\cs_{\alpha, \theta}$ is an extreme point of the class $\cs_{\alpha, 1}$. (If $S=(S_1+S_2)/2$ for $S_1, S_2 \in \cs_{\alpha, 1}$, then $S=S_1=S_2$)
+
+% \paragraph{Economic interpretation}
+% $S_{\alpha, \theta}$ corresponds to the regret compared to the best action player (bets only if $y > \theta$ and earn $\rho_G-\rho_L$, otherwise don't bet) under the following game. 
+% \begin{itemize}
+%     \item If Quinn refrains from betting, his payoff will be zero, independently of the outcome $y$.
+%     \item If Quinn enters the bet and $y \leq \theta$ realizes, he loses his wager, $\rho_L > 0$.
+%     \item If Quinn enters the bet and $y > \theta$ realizes, his winnings are $\rho_G - \rho_L$, for a gain of $\rho_G - \rho_L$.
+% \end{itemize}
+
+
+
+\subsection{Decomposition of score functions that are consistent for single quantile level}
+\label{subsec:decomp_single_q}
+
+A key ingredient in our approach is the structural characterization of scoring functions that are consistent for the $\alpha$-level quantile. The structural characterization for such scoring functions has a long history goes back to \cite{savage1971decompose}, \cite{thomson1979decompose} and \cite{gneiting2011point}. \cite{ehm2016binarydecomp} summarizes the results from these works as follows:
+
+\paragraph{Characterization.}
+Up to mild regularity conditions, a scoring function $S$ is consistent for the $\alpha$-level quantile relative to $\cf_0$ if and only if it can be written as
+\begin{align}\label{eq:q_consistent_score}
+S(x,y) = (\one(y<x)-\alpha)(g(x)-g(y)),
+\end{align}
+where $\cf_0$ denotes the class of the probability measures on the Borel-Lebesgue sets of the real line $\R$, and $g$ is a non-decreasing function. 
+
+Let $\mathcal{S}_{\alpha,0}$ denote the class of scoring functions of the form \eqref{eq:q_consistent_score} with $g$ is a left-continuous, non-decreasing real-valued functions. \cite{ehm2016binarydecomp} shows that $\mathcal{S}_{\alpha,0}$ can be decomposed into a integral of what they call elementary scores $S_{\alpha, \theta}$.
 
 \begin{theorem}[Theorem 1a in \cite{ehm2016binarydecomp}]
-     Any member of the class $\cs_\alpha$ admits a representation of the form 
-     \begin{align}\label{eq:elem_score_q}
-     S(x,y) = \int_{-\infty}^{\infty} S_{\alpha,\theta}(x,y) dH(\theta),
-     \end{align}
-     where $H$ is a nonnegative measure and 
-     \[
-     S_{\alpha, \theta}(x,y) = (\one(y<x)-\alpha)(\one(\theta<x)-\one(\theta<y)) 
-     =
-     \begin{cases}
-         1-\alpha, & y \leq \theta < x,  \\
-         \alpha, & x \leq \theta < y, \\
-         0, & \text{otherwise}.
-     \end{cases}
-     \]
-     The mixing measure $H$ is unique and satisfies $dH(\theta)=dg(\theta)$ for $\theta\in\R$. We also have $H(x)-H(y) = S(x,y)/(1-\alpha)$.
+  Any member of the class $\mathcal{S}_{\alpha,0}$ admits a representation of the form 
+  \begin{align}\label{eq:elem_score_q}
+  S(x,y) = \int_{-\infty}^{\infty} S_{\alpha,\theta}(x,y) dH(\theta),
+  \end{align}
+  where $H$ is a nonnegative measure and 
+  \[
+  S_{\alpha, \theta}(x,y) = (\one(y<x)-\alpha)(\one(\theta<x)-\one(\theta<y)) 
+  =
+  \begin{cases}
+      1-\alpha, & y \leq \theta < x,  \\
+      \alpha, & x \leq \theta < y, \\
+      0, & \text{otherwise}.
+  \end{cases}
+  \]
+  The mixing measure $H$ is unique and satisfies $dH(\theta)=dg(\theta)$ for $\theta\in\R$. % We also have $H(x)-H(y) = S(x,y)/(1-\alpha)$.
 \end{theorem}
 
-\paragraph{Choquet representation} If we restrict $g\in \ci_1 \subset \ci$, where $\ci_1$ contains $g$ such that $\lim_{x\to-\infty}g(x)=0$ and $\lim_{x\to\infty}g(x)=1$, and denote the corresponding class of scoring functions as $\cs_{\alpha, 1}$, $\cs_{\alpha, \theta}$ is an extreme point of the class $\cs_{\alpha, 1}$. (If $S=(S_1+S_2)/2$ for $S_1, S_2 \in \cs_{\alpha, 1}$, then $S=S_1=S_2$)
+This decomposition shows that any consistent scoring function can be expressed as a weighted combination of simple threshold-based losses. Each elementary score $S_{\alpha,\theta}(x,y)$ measures the discrepancy between $x$ and $y$ relative to a threshold $\theta$. The expected loss $\E_{Y\sim F}[S_{\alpha,\theta}(x,Y)]$ is minimized when $q_\alpha(F)$, where $q_\alpha$ is the $\alpha$-level quantile functional, and $x$ lie on the same side of $\theta$. \cite{ehm2016binarydecomp} provides an economic interpretation of the elementary scores $S_{\alpha,\theta}$.
 
 \paragraph{Economic interpretation}
-$S_{\alpha, \theta}$ corresponds to the regret compared to the best action player (bets only if $y > \theta$ and earn $\rho_G-\rho_L$, otherwise don't bet) under the following game. 
-\begin{itemize}
-    \item If Quinn refrains from betting, his payoff will be zero, independently of the outcome $y$.
-    \item If Quinn enters the bet and $y \leq \theta$ realizes, he loses his wager, $\rho_L > 0$.
-    \item If Quinn enters the bet and $y > \theta$ realizes, his winnings are $\rho_G - \rho_L$, for a gain of $\rho_G - \rho_L$.
-\end{itemize}
+Consider the following payoff scheme, known as spread betting in prediction markets: the wager is $\rho_L > 0$, and if the outcome $y$ exceeds $\theta$, the bettor receives $\rho_G > 0$, yielding a net gain of $\rho_G - \rho_L$; otherwise, the bettor loses $\rho_L$. If the bettor does not place a bet, the payoff is zero.
+
+Here, the oracle bettor is one who bets if and only if $y > \theta$, earning $\rho_G - \rho_L$ when this occurs, and otherwise abstains. When $\frac{\rho_G-\rho_L}{\rho_G} = \alpha$, the score $S_{\alpha, \theta}(x,y)$ corresponds to the regret of a bettor with decision threshold $x$, who enters the bet if and only if $q_\alpha(F) > x$, relative to the oracle bettor.
+
+In subsequent sections, we use $S_\alpha$ to denote the class of scoring functions with representation \eqref{eq:elem_score_q} with $H(\R)=1$.
+
 
 
 
 
 \subsection{Discretization} \label{subsec:discretization}
-We consider discretized true distribution $Y$ and discretized base forecasts $F(X)$. Assume $Y, F(X) \in \{0,\frac{1}{m},..., 1\}$ and we define $\theta_i = \frac{1}{2m}+\frac{i}{m}$ for $i =0,1,..,m-1$, in the same manner as in the binary case. 
+This subsection presents the discretization of predictions and forecasts, which allows no approximation error when approximating any element in $S_\alpha$ as a weighted sum of elementary scores. Without loss of generality, assume $Y_t, f(t) \in [0,1]$ for all $t \in [T]$, as the construction extends to any bounded interval $[-B_\ell, B_u]$ via rescaling. We consider the grid $\{0, \frac{1}{m}, \ldots, 1\}$ and define $\theta_i = \frac{i}{m} - \frac{1}{2m}$ for $i \in [m]$. We abbreviate $S_{\alpha, \theta_i}$ as $S_{\alpha, i}$.
+
 
 \begin{figure}[h]
 \centering
@@ -101,7 +163,7 @@ We consider discretized true distribution $Y$ and discretized base forecasts $F(
     \filldraw[black] (\x,0) circle (1pt);
   }
 
-  \foreach \x/\name in {1.5/$\theta_0\!=\!\frac{1}{2m}$, 4.5/$\theta_1\!=\!\frac{1}{2m}\!+\!\frac{1}{m}$, 7.5/$\theta_2\!=\!\frac{1}{2m}\!+\!\frac{2}{m}$, 13.5/$\theta_{m\!-\!1}\!=\!\frac{1}{2m}\!+\!\frac{m\!-\!1}{m}$} {
+  \foreach \x/\name in {1.5/$\theta_1\!=\!\frac{1}{2m}$, 4.5/$\theta_2\!=\!\frac{1}{2m}\!+\!\frac{1}{m}$, 7.5/$\theta_2\!=\!\frac{1}{2m}\!+\!\frac{2}{m}$, 13.5/$\theta_{m}\!=\!\frac{1}{2m}\!+\!\frac{m\!-\!1}{m}$} {
     \draw (\x,0.1) -- (\x,-0.1) node[above=4pt] {\name};
     \filldraw[black] (\x,0) circle (1pt);
   }
@@ -117,71 +179,99 @@ We consider discretized true distribution $Y$ and discretized base forecasts $F(
 \[
 \sup_{f\in\cf, S\in S_\alpha} \E[S(p(X),Y)] - \E[S(f(X),Y)] 
 =
-\sup_{f\in\cf, i\in\{0,..m-1\}} \E[S_{\alpha,\theta_i}(p(X),Y)] - \E[S_{\alpha,\theta_i}(f(X),Y)] 
+\sup_{f\in\cf, i\in[m]} \E[S_{\alpha,i}(p(X),Y)] - \E[S_{\alpha,i}(f(X),Y)] 
 \]
 \end{lemma}
 \begin{proof}
-Let $\theta_{i^*} \in \{\theta_i\}_{i=0}^{m-1}$ be the closest value  from $\theta$, where the ties are broken by rounding up. Observe that $\one(\theta < a) = \one(\theta_{i^*} < a)$ for $a \in \{\frac{j}{m}\}_{j=0}^m$. This gives 
+Let $\theta_{i^*} \in \{\theta_i\}_{i=1}^{m}$ be the closest value  from $\theta$, where the ties are broken by rounding up. Observe that $\one(\theta < a) = \one(\theta_{i^*} < a)$ for $a \in \{\frac{j}{m}\}_{j=0}^m$. This gives 
 \begin{align*}
 S_{\alpha, \theta}(x,y) & = (\one(y<x)-\alpha)(\one(\theta<x)-\one(\theta<y)) \\
-& = (\one(y<x)-\alpha)(\one(\theta_{i^*}<x)-\one(\theta_{i^*}<y)) = S_{\alpha, \theta_{i^*}}(x,y),
+& = (\one(y<x)-\alpha)(\one(\theta_{i^*}<x)-\one(\theta_{i^*}<y)) = S_{\alpha, {i^*}}(x,y),
 \end{align*}
-for $x,y \in \{\frac{j}{m}\}_{j=0}^m$ and $\theta \in [0,1]$. Using this relationship, we obtain
-\begin{align*}
+for $x,y \in \{\frac{j}{m}\}_{j=0}^m$ and $\theta \in [0,1)$ and $S_{\alpha, 1}(x,y) = 0$. Using this relationship, we obtain
+\begin{align*}+
 & \sup_{f\in\cf, S\in S_\alpha} \E[S(p(X),Y)] - \E[S(f(X),Y)] \\
 &= \sup_{f\in\cf, H:\text{pos. measure}} \E\left[\int_0^1 S_{\alpha, \theta}(p(X), Y) - S_{\alpha, \theta}(f(X),Y) dH(\theta) \right] \\
 &= \sup_{f\in\cf, H:\text{pos. measure}} \int_0^1\E[S_{\alpha, \theta}(p(X), Y)] - \E[S_{\alpha, \theta}(f(X),Y)] dH(\theta)\\
-&= \sup_{f\in\cf, H:\text{pos. measure}} \sum_{i=0}^{m-1} \E[S_{{\alpha, \theta_i}}(p(X), Y)] - \E[S_{{\alpha, \theta_i}}(f(X),Y)] \, 
+&= \sup_{f\in\cf, H:\text{pos. measure}} \sum_{i=1}^{m} \E[S_{{\alpha, i}}(p(X), Y)] - \E[S_{{\alpha, i}}(f(X),Y)] \, 
 H\left(\theta \in \left[\theta_i-\frac{1}{2m}, \theta_i +\frac{1}{2m}\right)\right) \\
-&\leq \sup_{f\in\cf, i\in\{0, 1,..., m-1\}} \E[S_{{\alpha, \theta_i}}(p(X), Y)] - \E[S_{{\alpha, \theta_i}}(f(X),Y)] \, H([0,1])
+&\leq \sup_{f\in\cf, i\in[m]} \E[S_{{\alpha, i}}(p(X), Y)] - \E[S_{{\alpha, i}}(f(X),Y)] \, H([0,1])
 \end{align*}
 Note that $S_{\alpha, \theta} \equiv 0$ for $\theta \notin [0,1]$ if $X,Y \in [0,1]$. 
-Since $S_{\alpha, \theta_i} \in S_\alpha$, the other direction of inequality follows, resulting in equality.
+Since $S_{\alpha, i} \in S_\alpha$, the other direction of inequality follows, resulting in equality.
 \end{proof}
 
 
 
 
-\subsection{Sample efficient algorithm for omniprediction of single quantile level forecasts} \label{subsec:omni_single_q}
-This subsection provides a closed form solution for the minimax program \eqref{eq:omni-twoplayer-minimax}:
+\subsection{Omniprediction algorithm and theoretical guarantee} \label{subsec:omni_single_q}
+This subsection introduces the omniprediction algorithm that optimizes the losses for all consistent scoring rules for single quantile forecasts. Then, we prove a theoretical upper bound for the omniprediction error of the algorithm.
+
+\begin{algorithm}
+  \caption{Single quantile level omniprediction} \label{alg:omni-twoplayer_online_q}
+  \begin{algorithmic}[1]
+  \State \textbf{Data:} Data stream $\{Y_t\}_{t=1}^T$, Grid size $m \in \mathbb{N}$, Learning rate $\eta > 0$, Base forecasters $\cf = \{f_b\}_{b=1}^{B}$.
+  \State For $t=1$,$w_{ib}(t) = \frac{1}{mB}$, for all $i \in [m], b \in [B]$;
+
+  \For{$t = 1, \ldots, T$}
+    \State \textbf{1) Make prediction at time $t$}:
+    \State $B_k := \sum_{i=1}^{k} \sum_{b=1}^B w_{ib}(t) - \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}(t) \one(\theta_i < f_b(t))$, $\quad k^* = \max\{k: B_k \leq 0\}$
+      \State \textbf{Output}
+      \makebox[0pt][l]{$\displaystyle
+          \hat{P}_t = \frac{B_{k^*+1}}{B_{k^*+1} + |B_{k^*}|}\delta_{\frac{k^*}{m}} +
+          \frac{|B_{k^*}|}{B_{k^*+1} + |B_{k^*}|}\delta_{\frac{k^*+1}{m}}$
+      } \vspace{-0.1cm}\\
+      \State \textbf{2) Update the weights for each $S_{\theta_i}$ and $f_r$}:
+          \State $w_{ib}(t+1) = \frac{w_{ib}(t) \exp\bigl(\eta \big(\mathbb{E}_{p \sim \hat{P}_t}[S_{\alpha, i}(p, Y_t)] 
+          - S_{\alpha, i}(f_b(t), Y_t)\big)\bigr)}{\sum_{i,b} w_{ib}(t) \exp\bigl(\eta \big(\mathbb{E}_{p \sim \hat{P}_t}[S_{\alpha, i}(p, Y_t)] 
+          - S_{\alpha, i}(f_b(t), Y_t)\big)\bigr)}, \quad \forall i \in [m], b \in [B];$ \vspace{-0.1cm}\\
+  \EndFor
+  \end{algorithmic}
+\end{algorithm}
+
+
+
+The first part of the algorithm is to make a prediction at time $t$. $\hat{P}_t$ computed here is a minimax solution for the following minimax program:
 \[
-  \hat{P}_t(x) = \arg\min_{P \in \Delta_m} \max_{p_y \in [0,1]} 
-  \mathbb{E}_{Y' \sim \text{Ber}(p_y),\, p \sim P}
-  [S(p, (x, Y'); q(t))];
+  \hat{P}_t = \arg\min_{P \in \Delta_m} \max_{P_y \in \Delta_m} 
+  \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}\E_{p\sim P, Y \sim P_y}[S_{\alpha,i}(p,Y) - S_{\alpha,i}(f_b(t),Y)].
 \]
-to obtain a single quantile level forecast version of Algorithm \ref{alg:omni-twoplayer}.
+% to obtain a single quantile level forecast version of minimax program solution \eqref{eq:omni-twoplayer-minimax} in Algorithm \ref{alg:omni-twoplayer}.
 
 
-Now, we denote forecasts $\{\hat{f}_{\theta_i}\}_{i=0}^{m-1}$ be the forecast that minimizes the losses $\{S_{\alpha, \theta_i}\}_{i=0}^{m-1}$. Letting $\Delta_m$ denote the set of probability distributions over $\{0, \frac{1}{m}, \frac{2}{m}, ...,1\}$, the following holds due to von Neumann's minimax theorem. Note that the expectation is linear in both $p$ and $Y$ and that $\Delta_m$ is compact convex.
+% Now, we denote forecasts $\{\hat{f}_{\theta_i}\}_{i=0}^{m-1}$ be the forecast that minimizes the losses $\{S_{\alpha, \theta_i}\}_{i=0}^{m-1}$.
+\subsubsection{Minimax solution for single quantile level omniprediction}
+Letting $\Delta_m$ denote the set of probability distributions over $\{0, \frac{1}{m}, \frac{2}{m}, ...,1\}$, the following holds due to von Neumann's minimax theorem. Note that the expectation is linear in both $p$ and $Y$ and that $\Delta_m$ is compact and convex. First, we prove that the value of the minimax program is non-positive.
+
 \begin{lemma}\label{lem:minimax_single_q_neg}
 \[
-\min_{P \in \Delta_m} \max_{P_y \in \Delta_m} \sum_{i=0}^{m-1} w_i\E_{p\sim P, Y \sim P_y}[S_{\alpha,\theta_i}(p,Y) - S_{\alpha,\theta_i}(\hat{f}_{\theta_i},Y)] 
+\min_{P \in \Delta_m} \max_{P_y \in \Delta_m} \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}\E_{p\sim P, Y \sim P_y}[S_{\alpha,i}(p,Y) - S_{\alpha,i}(f_b(t),Y)] 
 \leq 0
 \]
 \end{lemma}
 \begin{proof}
 From von Neumann's minimax theorem, we have 
 \begin{align*}
-\min_{P \in \Delta_m} \max_{P_y \in \Delta_m} & \sum_{i=0}^{m-1} w_i\E_{p\sim P, Y \sim P_y}[S_{\alpha,\theta_i}(p,Y) - S_{\alpha,\theta_i}(\hat{f}_{\theta_i},Y)] \\
-& = \max_{P_y \in \Delta_m} \min_{P \in \Delta_m}  \sum_{i=0}^{m-1} w_i\E_{p\sim P, Y \sim P_y}[S_{\alpha,\theta_i}(p,Y) - S_{\alpha,\theta_i}(\hat{f}_{\theta_i},Y)].
+\min_{P \in \Delta_m} \max_{P_y \in \Delta_m} & \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}\E_{p\sim P, Y \sim P_y}[S_{\alpha,i}(p,Y) - S_{\alpha,i}(f_b(t),Y)] \\
+& = \max_{P_y \in \Delta_m} \min_{P \in \Delta_m}  \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}\E_{p\sim P, Y \sim P_y}[S_{\alpha,i}(p,Y) - S_{\alpha,i}(f_b(t),Y)].
 \end{align*}
-Since $S_{\alpha,\theta_i}$ is consistent for the quantile functional at level $\alpha$,
+Since $S_{\alpha,i}$ is consistent for the quantile functional at level $\alpha$,
 \[
-\min_{P\in \Delta_m}\E_{p\sim P, Y \sim P_y}[S_{\alpha,\theta_i}(P,Y) - S_{\alpha,\theta_i}(\hat{f}_{\theta_i},Y)] 
+\min_{P\in \Delta_m}\E_{p\sim P, Y \sim P_y}[S_{\alpha,i}(P,Y) - S_{\alpha,i}(f_b(t),Y)] 
 \leq 
-\E_{p\sim P, Y \sim P_y}[S_{\alpha,\theta_i}(\delta_{Q_\alpha(F)},Y) - S_{\alpha,\theta_i}(\hat{f}_{\theta_i},Y)] 
+\E_{Y \sim P_y}[S_{\alpha,i}(\delta_{q_\alpha(P_y)},Y) - S_{\alpha,i}(f_b(t),Y)] 
 \leq 0.
 \]
 Taking $\max_{P_y \in \Delta_m}$ on both sides concludes the proof.
 \end{proof}
 
-The last component is a shortcut to compute the minimax solution by utilizing the structure of $S_{\alpha, \theta}$ losses.
+The last component is a shortcut to compute the minimax solution by utilizing the structure of $S_{\alpha, i}$ losses.
 \begin{align}\label{eq:minimax_q}
-\hat{P}_t(x) = \arg\min_{p \in \Delta_m} \max_{Y\sim F \in \Delta_m} \sum_{i=0}^{m-1} w_i \,\E[S_{\alpha,\theta_i}(p(x),Y) - S_{\alpha,\theta_i}(\hat{f}_{\theta_i}(x),Y)] 
+\hat{P}_t = \arg\min_{P \in \Delta_m} \max_{P_y \in \Delta_m} \sum_{i=1}^{m} \sum_{b=1}^B w_{ib} \,\E_{p\sim P, Y \sim P_y}[S_{\alpha,i}(p,Y) - S_{\alpha,i}(f_b(t),Y)] 
 \end{align}
 
 
-\begin{lemma} \label{lem:minimax_sol_single_q}\todo{To add special care on $k^*=m$ case} Define $B_k := \sum_{i=0}^{k-1} w_i - \sum_{i=0}^{m-1}w_i \one(\theta_i < \hat{f}_{\theta_i})$ and let $k^* = \max\{k: B_k \leq 0\}$. Note that $B_{k^*} \leq 0$ and $B_{k^*+1}>0$. Then, 
+\begin{lemma} \label{lem:minimax_sol_single_q}\todo{To add special care on $k^*=m$ case} Define $B_k := \sum_{i=1}^{k} \sum_{b=1}^B w_{ib} - \sum_{i=1}^{m} \sum_{b=1}^B w_{ib} \one(\theta_i < f_b(t))$ and let $k^* = \max\{k: B_k \leq 0\}$. Note that $B_{k^*} \leq 0$ and $B_{k^*+1}>0$. Then, 
 \begin{align*}
 P^* = \frac{B_{k^*+1}}{B_{k^*+1} + |B_{k^*}|}\delta_{\frac{k^*}{m}} + \frac{|B_{k^*}|}{B_{k^*+1} + |B_{k^*}|}\delta_{\frac{k^*+1}{m}} 
 \quad\text{and}\quad
@@ -189,131 +279,107 @@ P_y^* = \alpha \delta_0 + (1-\alpha) \delta_1
 \end{align*}
 solves equation \eqref{eq:minimax_q}.
 \end{lemma}
+
 \begin{proof}
-Let $O(P,P_y) := \sum_{i=0}^{m-1} w_i\E_{p\sim P, Y \sim P_y}[S_{\alpha,\theta_i}(p,Y) - S_{\alpha,\theta_i}(\hat{f}_{\theta_i},Y)]$.
+Let $O(P,P_y) := \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}\E_{p\sim P, Y \sim P_y}[S_{\alpha,i}(p,Y) - S_{\alpha,i}(f_b(t),Y)]$.
 It suffices to prove that $O(P^*, P_y^*) = \max_{P_y} O(P^*, P_y) = \min_P O(P, P_y^*)$. We start with decomposing $O(P, P_y)$:
-\begin{align}\label{eq:oppy_q}
-O(P, P_y) &= \sum_{i=0}^{m-1} w_i\E_{p\sim P, Y \sim P_y}[(\one(Y<p)-\alpha)(\one(\theta_i<p)-\one(\theta_i<Y)) - (\one(Y<\hat{f}_{\theta_i})-\alpha)(\one(\theta_i<\hat{f}_{\theta_i})-\one(\theta_i<Y))] \nonumber\\
-&= \sum_{i=0}^{m-1} w_i\E_{p\sim P, Y \sim P_y}[\one(\theta_i, Y\!<\!p) - \alpha\one(\theta_i\!<\!p) - \one(\theta_i\!<\!Y\!<\!p)) - \one(\theta_i, Y\!<\!\hat{f}_{\theta_i}) + \alpha\one(\theta_i\!<\!\hat{f}_{\theta_i}) + \one(\theta_i\!<\!Y\!<\!\hat{f}_{\theta_i}))] \nonumber\\
-&= \sum_{i=0}^{m-1} w_i\E_{p\sim P, Y \sim P_y}[\one(Y \leq \theta_i < p) - \alpha\one(\theta_i<p) - \one(Y \leq \theta_i < \hat{f}_{\theta_i})] + C,
-\end{align}
-where $C=\alpha \sum_{i=0}^{m-1} w_i \one(\theta_i < \hat{f}_{\theta_i})$ which does not depend on $P$ or $P_y$.
+\begin{align}
+  \label{eq:oppy_q}
+  O(P, P_y)
+  &= \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}
+  \mathbb{E}_{p\sim P,\, Y \sim P_y} \Big[
+  (\one(Y<p)-\alpha)\big(\one(\theta_i<p)-\one(\theta_i<Y)\big) \nonumber \\
+  &\qquad\qquad
+  - (\one(Y<f_b(t))-\alpha)\big(\one(\theta_i<f_b(t))-\one(\theta_i<Y)\big)
+  \Big] \nonumber \\
+  &= \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}
+  \mathbb{E}_{p\sim P,\, Y \sim P_y} \Big[
+  \one(Y, \theta_i < p)
+  - \alpha \one(\theta_i<p)
+  - \one(\theta_i<Y<p) \nonumber \\
+  &\qquad\qquad
+  - \one(Y, \theta_i < f_r(t))
+  + \alpha \one(\theta_i<f_r(t))
+  + \one(\theta_i<Y<f_r(t))
+  \Big] \nonumber \\
+  &= \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}
+  \mathbb{E}_{p\sim P,\, Y \sim P_y} \Big[
+  \one(Y \le \theta_i < p)
+  - \alpha \one(\theta_i<p)
+  - \one(Y \le \theta_i < f_b(t))
+  \Big] + C_\alpha.
+  \end{align}
+where $C_\alpha=\alpha \sum_{i=1}^{m} \sum_{b=1}^B w_{ib} \one(\theta_i < f_b(t))$ which does not depend on $P$ or $P_y$.
 
 \smallskip
-We first prove $O(P^*, P_y^*) = \max_{P_y} O(P^*, P_y)$. Let $P_y(\frac{j}{m})=p_{yj}$ for $j=0,...,m$. Then, $O(P^*, P_y)$ is rephrased as the following:
+We first prove $O(P^*, P_y^*) = \max_{P_y} O(P^*, P_y)$. Let $P_y(\frac{j}{m})=p_{yj}$ for $j=0,...,m$. 
+%Define $B-$dimensional vectors $w_i := (w_{i1}, w_{i2}, ..., w_{iB})$, $\one_i(t) := \{\indi{\theta_i < f_b(t)}\}_{b=1}^B$ and $\one_B := (1,..,1)$ for $i \in [m]$. 
+Using the fact that $\one(\theta_i < k/m) = \one(i \leq k)$, $O(P^*, P_y)$ is rephrased as the following:
 \begin{align}
 O(P^*, P_y) 
 =& \E_{p\sim P^*} \left[\sum_{j=0}^m p_{yj} 
-\left(\sum_{i=j}^{m-1} w_i \left(\one(\theta_i < p) - \one(\theta_i < \hat{f}_{\theta_i})\right) \right) \right] + C(P^*) \nonumber\\
+\left(\sum_{i=j+1}^{m} \sum_{b=1}^B w_{ib} \left(\one(\theta_i < p) - \one(\theta_i < f_b(t))\right) \right) \right] + C(P^*) \nonumber\\
 =& \frac{B_{k^*+1}}{B_{k^*+1} + |B_{k^*}|} \left[\sum_{j=0}^m p_{yj} 
-\left(\sum_{i=j}^{k^*-1} w_i - \sum_{i=j}^{m-1} w_i \one(\theta_i < \hat{f}_{\theta_i}) \right) \right] \nonumber\\
+\left(\sum_{i=j+1}^{k^*} \sum_{b=1}^B w_{ib} - \sum_{i=j+1}^{m} \sum_{b=1}^B w_{ib} \one(\theta_i < f_b(t)) \right) \right] \nonumber\\
 &+ \frac{|B_{k^*}|}{B_{k^*+1} + |B_{k^*}|} \left[\sum_{j=0}^m p_{yj} 
-\left(\sum_{i=j}^{k^*} w_i - \sum_{i=j}^{m-1} w_i \one(\theta_i < \hat{f}_{\theta_i}) \right) \right] + C(P^*) \label{eq:opstarpy_q},
+\left(\sum_{i=j+1}^{k^*+1} \sum_{b=1}^B w_{ib} - \sum_{i=j+1}^{m} \sum_{b=1}^B w_{ib} \one(\theta_i < f_b(t)) \right) \right] + C(P^*) \label{eq:opstarpy_q},
 \end{align}
-where $C(P^*)$ is a value that does not depend on $P_y$ and we ignore the term hereafter.
+where $C(P^*)$ is a value that does not depend on $P_y$ and we ignore the term hereafter. % We abbreviate $\sum_{b=1}^F w_{ib}$ as $w_i$ and $\sum_{b=1}^F w_{ib} \one(\theta_i < f_b(t))$ as $(wf)_i$.
 
-Now observe that $A_k^j := \sum_{i=j}^{k-1} w_i - \sum_{i=j}^{m-1} w_i \one(\theta_i < \hat{f}_{\theta_i})$ is non-increasing on $j\leq k$ and non-decreasing on $k \leq j < m$. Also note that $A_k^0 \geq A_k^{m-1}$ if $k=m$ and $A_k^m = 0 \geq A_k^{m-1}$ if $k \neq m$. Therefore, $A_k^j$ achieves maximum at $j=0$ or $j=m$:
+Now observe that $A_k^j := \sum_{i=j+1}^{k} \sum_{b=1}^B w_{ib} - \sum_{i=j+1}^{m} \sum_{b=1}^B w_{ib} \one(\theta_i < f_b(t))$ is non-increasing on $j\leq k$ and non-decreasing on $j \in [k, m)$ since $\one(\theta_i < f_b(t))$ is $0$ or $1$. Also note that $A_k^0 \geq A_k^{m-1}$ if $k=m$ and $A_k^m = 0 \geq A_k^{m-1}$ if $k \neq m$. Therefore, $A_k^j$ achieves maximum at $j=0$ or $j=m$:
 \begin{align*}
-\max_{\sum_j{p_{yj}}=1}\sum_{j=0}^{m} p_{yj} \left(\sum_{i=j}^{k-1} w_i - \sum_{i=j}^{m-1} w_i \one(\theta_i < \hat{f}_{\theta_i})\right)
-&= \max_{p_{y0}+p_{ym}=1} p_{y0}\left(\sum_{i=0}^{k-1} w_i - \sum_{i=0}^{m-1} w_i \one(\theta_i < \hat{f}_{\theta_i})\right) + p_{ym}\cdot 0 \\
-&= \max\{A_k^0, 0\}
+& \max_{\sum_j{p_{yj}}=1}\sum_{j=0}^{m} p_{yj} \left(\sum_{i=j+1}^{k} \sum_{b=1}^B w_{ib} - \sum_{i=j+1}^{m} \sum_{b=1}^B w_{ib} \one(\theta_i < f_b(t))\right) \\
+&= \max_{p_{y0}+p_{ym}=1} p_{y0}\left(\sum_{i=1}^{k} \sum_{b=1}^B w_{ib} - \sum_{i=1}^{m} \sum_{b=1}^B w_{ib} \one(\theta_i < f_b(t))\right) + p_{ym}\cdot 0 
+= \max_{p_{y0}+p_{ym}=1} p_{y0} \cdot B_k + p_{ym} \cdot 0.% = \max\{A_k^0, 0\} = \max\{B_k, 0\}
 \end{align*}
 
 Putting this together with equation \eqref{eq:opstarpy_q} and the fact that $B_{k^*}\leq 0$ gives
 \begin{align*}
-\max_{P_y}O(P^*, P_y) = p_{y0} \left(\frac{B_{k^*+1}}{B_{k^*+1} + |B_{k^*}|} \cdot B_{k*} + \frac{|B_{k^*}|}{B_{k^*+1} + |B_{k^*}|} \cdot B_{k^*+1}\right) + p_{ym}\cdot 0 = 0,
+\max_{P_y}O(P^*, P_y) = \max_{p_{y0}+p_{ym}=1} p_{y0} \left(\frac{B_{k^*+1}}{B_{k^*+1} + |B_{k^*}|} \cdot B_{k*} + \frac{|B_{k^*}|}{B_{k^*+1} + |B_{k^*}|} \cdot B_{k^*+1}\right) + p_{ym}\cdot 0 + C(P^*),
 \end{align*}
-which is achieved by $P_y^*$. This proves that $O(P^*, P_y^*) = \max_{P_y} O(P^*, P_y)$.
+which is achieved by $P_y^*$ since $P_y^*$ only puts mass on $j=0, m$. This proves that $O(P^*, P_y^*) = \max_{P_y} O(P^*, P_y)$.
 
 \smallskip
 Next, we prove $O(P^*, P_y^*) = \min_P O(P, P_y^*)$. The decomposition \eqref{eq:oppy_q} of $O(P, P_y)$ reduces to
 \begin{align*}
-O(P, P_y^*) 
-&= \alpha \sum_{i=0}^{m-1} w_i\E_{p\sim P}[(1-\alpha)\one(\theta_i < p) - \one(\theta_i < \hat{f}_{\theta_i})] + 
-(1-\alpha) \sum_{i=0}^{m-1} w_i\E_{p\sim P}[-\alpha\one(\theta_i < p)] + C \\
-&= -\alpha \sum_{i=0}^{m-1} w_i\one(\theta_i < \hat{f}_{\theta_i}) + C = 0,
+& O(P, P_y^*)  \\ 
+&= \alpha \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}\E_{p\sim P}[(1-\alpha)\one(\theta_i < p) - \one(\theta_i < f_b(t))] + 
+(1-\alpha) \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}\E_{p\sim P}[-\alpha\one(\theta_i < p)] + C_\alpha \\
+&= -\alpha \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}\one(\theta_i < f_b(t)) + C = 0,
 \end{align*}
 which does not depend on $P$. Thus, $O(P^*, P_y^*) = \min_P O(P, P_y^*)$.
 \end{proof}
 
-\begin{algorithm}
-\caption{Two-player game based single quantile omniprediction (batch version)} \label{alg:omni-twoplayer_q}
-\begin{algorithmic}[1]
-\State \textbf{Data:} Data $\{(X_i, Y_i)\}_{i=1}^n$, hyperparameters $m \in \mathbb{N}$, $\eta > 0$, competitor functions $\{\hat{f}_{\theta_i}\}_{i=0}^{m-1}$.
-\State $w_i(1) = \frac{1}{m}$, for all $i \in \{0, \ldots, m-1\}$;
-\For{$t = 1, \ldots, n$}
-    \State $B_k(x) := \sum_{i=0}^{k-1} w_i - \sum_{i=0}^{m-1}w_i \one(\theta_i < \hat{f}_{\theta_i}(x))$, $\quad k^*(x) = \max\{k: B_k \leq 0\}$
-    \State 
-    \makebox[0pt][l]{$\displaystyle
-        \hat{P}_t(x) = \frac{B_{k^*(x)+1}}{B_{k^*(x)+1} + |B_{k^*(x)}|}\delta_{\frac{k^*(x)}{m}} +
-        \frac{|B_{k^*(x)}|}{B_{k^*(x)+1} + |B_{k^*(x)}|}\delta_{\frac{k^*(x)+1}{m}}$
-        }
-    \State $w_i(t+1) \propto w_i(t) \exp\bigl(\eta \big(\mathbb{E}_{p \sim \hat{P}_t(X_t)}[S_{\theta_i}(p, Y_t)] 
-        - S_{\theta_i}(\hat{f}_{\theta_i}(X_t), Y_t)\big)\bigr), \quad \forall i \in \{0, \ldots, m-1\};$
-\EndFor
-\State \textbf{return} $\hat{P} = \frac{1}{n} \sum_{i=1}^n \hat{P}_i$
-\end{algorithmic}
-\end{algorithm}
 
 
 
-
-\subsubsection{Fully online algorithm for omniprediction of single quantile forecasts} 
-\begin{algorithm}
-  \caption{Two-player game based single quantile omniprediction (fully online version)} \label{alg:omni-twoplayer_online_q}
-  \begin{algorithmic}[1]
-  \State \textbf{Data:} Data stream $\{Y_t\}_{t=1}^T$, hyperparameters $m, F \in \mathbb{N}$, $\eta_w, \eta_f > 0$, competitor function class $\cf = \{f_j\}_{j=1}^{F}$.
-  \State For $t=1$,$w_i(t) = \frac{1}{m}$, $\hat{f}_{\theta_i}(t) = f_1$, for all $i \in \{0, \ldots, m-1\}$;
-  \State $v_{i,j}(1) = \frac{1}{F}$, for all $i \in \{0, \ldots, m-1\}$, $j \in \{1, \ldots, F\}$;
-  \For{$t = 1, \ldots, T$}
-    \State \textbf{1) Make prediction at time $t$}:
-    \State $B_k := \sum_{i=0}^{k-1} w_i(t) - \sum_{i=0}^{m-1}w_i(t) \one(\theta_i < \hat{f}_{\theta_i}(t))$, $\quad k^* = \max\{k: B_k \leq 0\}$
-      \State \textbf{Output}
-      \makebox[0pt][l]{$\displaystyle
-          \hat{P}_t = \frac{B_{k^*+1}}{B_{k^*+1} + |B_{k^*}|}\delta_{\frac{k^*}{m}} +
-          \frac{|B_{k^*}|}{B_{k^*+1} + |B_{k^*}|}\delta_{\frac{k^*+1}{m}}$
-      } \vspace{-0.1cm}\\
-      \State \textbf{2) Update the weights for each $S_{\theta_i}$}:
-          \State $w_i(t+1) \propto w_i(t) \exp\bigl(\eta \big(\mathbb{E}_{p \sim \hat{P}_t}[S_{\theta_i}(p, Y_t)] 
-          - S_{\theta_i}(\hat{f}_{\theta_i}(t), Y_t)\big)\bigr), \quad \forall i \in \{0, \ldots, m-1\};$ \vspace{-0.1cm}\\
-      \State \textbf{3) Update the best competitor function for each $S_{\theta_i}$}:
-      \State $v_{i,j}(t+1) = \frac{v_{i,j}(t) \exp\bigl(-\eta_f S_{\theta_i}(\hat{f}_{j}(t), Y_t)\bigr)}{\sum_{j=1}^F v_{i,j}(t) \exp\bigl(-\eta_f S_{\theta_i}(\hat{f}_{j}(t), Y_t)\bigr)}, \quad \forall i \in \{0, \ldots, m-1\}, j \in \{1, \ldots, F\};$
-      \For{$i = 0, \ldots, m-1$}
-        \State Sample $j_i(t+1) \in [F] \sim v_{i,\cdot}(t+1)$;
-        \State $\hat{f}_{\theta_i}(t+1) = f_{j_i(t+1)}$;
-      \EndFor
-  \EndFor
-  \end{algorithmic}
-  \end{algorithm}
-  
+\subsubsection{Omniprediction error bound} 
+Lastly, we present the omniprediction error bound for Algorithm \ref{alg:omni-twoplayer_online_q}.
 \begin{theorem}
   \label{thm:omni-twoplayer_online_q}
-  For a quantile level $\alpha \in (0,1)$, let $S_\alpha$ denote the class of scoring functions with representation \eqref{eq:elem_score_q} with $H([0,1]) \leq 1$ (the set of \textit{all} scoring functions that are consistent for the $\alpha$-level quantile functional under mild regularity conditions). Consider a class of competitors $\cf$ where each forecaster $f \in \cf$ provides $\alpha$-level quantile forecasts. With the target values $Y_t$, forecaster predictions $f(t)$ for $t \in [T], f \in \cf$ each taking values in a discretized grid of size $m$ and the learning rate $\eta_w = O(\sqrt{\frac{\log m}{T}})$ and $\eta_f = O(\sqrt{\frac{\log |\cf|}{T}})$, the output $\hat{P}_t$ from Algorithm \ref{alg:omni-twoplayer_online_q} achieves the following omniprediction error:
+  For a quantile level $\alpha \in (0,1)$, let $S_\alpha$ denote the class of scoring functions with representation \eqref{eq:elem_score_q} with $H(\R) = 1$ (the set of \textit{all} scoring functions that are consistent for the $\alpha$-level quantile functional under mild regularity conditions). Consider a base forecasters $\{f_b\}_{b=1}^B$ provides $\alpha$-level quantile forecasts. With the target values $Y_t$, forecaster predictions $f_b(t)$ for $t \in [T], b \in [B]$ each taking values in a uniform grid of size $m$ with spacing $B/m$ and the learning rate $\eta = \sqrt{\frac{\log mB}{T}}$, the output $\hat{P}_t$ from Algorithm \ref{alg:omni-twoplayer_online_q} achieves the following omniprediction error:
   \begin{align*}
-  \sup_{S \in S_\alpha,\, f \in \cf} \frac{1}{T} \sum_{t=1}^T \E_{p \sim \hat{P}_t} [S(p, Y_t)] - \E[S(f(t), Y_t)]
-  \leq O\left(\sqrt{\frac{\log m|\cf|}{T}}\right)
+  \sup_{S \in S_\alpha,\, b \in [B]} \frac{1}{T} \sum_{t=1}^T \E_{p \sim \hat{P}_t} [S(p, Y_t)] - \E[S(f_b(t), Y_t)]
+  \leq 2\left(\sqrt{\frac{\log mB}{T}}\right)
   \end{align*}
 \end{theorem}
 
 
 \begin{proof}
-Observe that $|S_{\alpha, \theta_i}| \leq 1$. Regret bound of hedge algorithm (Theorem 1.5 of \cite{hazanoco}) gives the following:
+Observe that $S_{\alpha, i}(x,y) \in \{0, \alpha, 1-\alpha\}$ and $|S_{\alpha, i}(x_1,y_1) - S_{\alpha, i}(x_2,y_2)| \leq 1$. Without loss of generality, we assume that $Y_t, f_b(t) \in \{0, \frac{1}{m}, 1\}$ for all $t \in [T], b \in [B]$, as this construction extends to any bounded interval $[-B_\ell, B_u]$ via rescaling. Also note that $S_{\alpha, \theta}(p, Y_t)$ or $S_{\alpha, \theta}(f_b(t), Y_t)$ with $\theta \notin [-B_\ell, B_u]$ is always zero for $p \in [-B_\ell, B_u]$. Therefore non-negative mass of $H$ on $\R \backslash [-B_\ell, B_u]$ is irrelevant to the omniprediction error.
+
+Regret bound of hedge algorithm (Theorem 1.5 of \cite{hazanoco}) gives the following:
 \begin{align}
-  \frac{1}{T} \sum_{t=1}^T \E_{j_i(t)}\left[S_{\alpha, \theta_i}(\hat{f}_{\theta_i}(t), Y_t) \right]
-  & \,\leq\, \min_{f \in \cf} \frac{1}{T} \sum_{t=1}^T S_{\alpha, \theta_i}(f(t), Y_t) + \eta_f + \frac{\log|\cf|}{T\eta_f} \label{ieq:hedge_f_update}
-\end{align}
-\begin{align}
-  \max_{i \in \{0, \ldots, m-1\}} \frac{1}{T} \sum_{t=1}^T 
-  & \E_{p\sim \hat{P}(X_t)}\left[ S_{\alpha, \theta_i}(p, Y_t) - S_{\alpha, \theta_i}(\hat{f}_{\theta_i}(t), Y_t) \right] \nonumber\\
-  & \leq \frac{1}{T} \sum_{t=1}^T \sum_{i=0}^{m-1} w_i(t) \, \E_{p\sim \hat{P}(X_t)}\left[ S_{\alpha, \theta_i}(p, Y_t) - S_{\alpha, \theta_i}(\hat{f}_{\theta_i}(t), Y_t) \right] + 4\eta_w + \frac{\log m}{T\eta_w} \label{ieq:hedge_w_update}
+  \max_{i \in [m], b \in [B]} \frac{1}{T} \sum_{t=1}^T \sum_{b=1}^B 
+  & \E_{p\sim \hat{P}_t}\left[ S_{\alpha, i}(p, Y_t) - S_{\alpha, i}(f_b(t), Y_t) \right] \nonumber\\
+  & \leq \frac{1}{T} \sum_{t=1}^T \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}(t) \, \E_{p\sim \hat{P}_t}\left[ S_{\alpha, i}(p, Y_t) - S_{\alpha, i}(f_b(t), Y_t) \right] + \eta + \frac{\log mB}{T\eta} \label{ieq:hedge_w_update}
 \end{align}
 
-Putting these altogether, we have:
+Putting these together with previous lemmas, we have:
   \begin{align*}
     & \sup_{S \in S_\alpha,\, f \in \cf} \frac{1}{T} \sum_{t=1}^T \E_{p \sim \hat{P}_t} [S(p, Y_t)] - S(f(t), Y_t) \\
-    & \underset{Lemma \ref{lem:discretize_single_q}}{=} \sup_{i \in \{0, \ldots, m-1\}, f \in \cf} \frac{1}{T} \sum_{t=1}^T \E_{p \sim \hat{P}_t} [S_{\alpha, \theta_i}(p, Y_t)] - S_{\alpha, \theta_i}(f(t), Y_t) \\
-    & \underset{Ieq. \eqref{ieq:hedge_f_update}}{\leq} \sup_i \frac{1}{T} \sum_{t=1}^T \E_{p \sim \hat{P}_t} [S_{\alpha, \theta_i}(p, Y_t)] - \E_{j_i(t)}\left[S_{\alpha, \theta_i}(\hat{f}_{\theta_i}(t), Y_t) \right] + O\left(\sqrt{\frac{\log|\cf|}{T}}\right) \\
-    & \underset{Ieq. \eqref{ieq:hedge_w_update}}{\leq} \sup_i \frac{1}{T} \sum_{t=1}^T \sum_{i=0}^{m-1} w_i(t) \, \E_{p\sim \hat{P}_t}\left[ S_{\alpha, \theta_i}(p, Y_t) - \E_{j_i(t)}\left[S_{\alpha, \theta_i}(\hat{f}_{\theta_i}(t), Y_t) \right] \right] + O\left(\sqrt{\frac{\log m|\cf|}{T}}\right) \\
-    & \underset{Lemma \ref{lem:minimax_single_q_neg}}{=} O\left(\sqrt{\frac{\log m|\cf|}{T}}\right).
+    & \underset{\text{Lem. } \ref{lem:discretize_single_q}}{=} \sup_{i \in [m], b \in [B]} \frac{1}{T} \sum_{t=1}^T \E_{p \sim \hat{P}_t} [S_{\alpha, i}(p, Y_t)] - S_{\alpha, i}(f(t), Y_t) \\
+    & \underset{Ieq. \eqref{ieq:hedge_w_update}}{\leq} \frac{1}{T} \sum_{t=1}^T \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}(t) \, \E_{p\sim \hat{P}_t}\left[ S_{\alpha, i}(p, Y_t) - S_{\alpha, i}(f_b(t), Y_t) \right] + 2\left(\sqrt{\frac{\log mB}{T}}\right) \\
+    & \underset{\text{Lem. } \ref{lem:minimax_single_q_neg}}{\leq} 2\left(\sqrt{\frac{\log mB}{T}}\right).
   \end{align*}
-\end{proof}
+\end{proof} 

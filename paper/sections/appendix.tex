@@ -1,0 +1,25 @@
+\section{Different versions of omniprediction algorithm} \label{sec:diff_omni_algos}
+\subsection{General base forecasters class $\cf$ with pre-computed best competitor}
+We can modify Algorithm \ref{alg:omni-twoplayer_online_q} to a version that accommodates more general $\cf$, which now takes the best competitor for each elementary score $S_{\alpha, i}$ as input instead of discovering it inside the algorithm.
+
+\begin{algorithm}
+    \caption{Single quantile level omniprediction with pre-computed best competitor for each elementary score} 
+    \begin{algorithmic}[1]
+    \State \textbf{Data:} Data stream $\{Y_t\}_{t=1}^T$, Grid size $m \in \mathbb{N}$, Learning rate $\eta > 0$, Best competitor for $S_{\alpha, i}$: $\hat{f}_i, i \in \{0, \ldots, m-1\}$.
+    \State For $t=1$,$w_{i}(t) = \frac{1}{m}$, for all $i \in \{0, \ldots, m-1\}$;
+  
+    \For{$t = 1, \ldots, T$}
+      \State \textbf{1) Make prediction at time $t$}:
+      \State $B_k := \sum_{i=0}^{k-1} w_{i}(t) - \sum_{i=0}^{m-1} w_{i}(t) \one(\theta_i < \hat{f}_i(t))$, $\quad k^* = \max\{k: B_k \leq 0\}$
+        \State \textbf{Output}
+        \makebox[0pt][l]{$\displaystyle
+            \hat{P}_t = \frac{B_{k^*+1}}{B_{k^*+1} + |B_{k^*}|}\delta_{\frac{k^*}{m}} +
+            \frac{|B_{k^*}|}{B_{k^*+1} + |B_{k^*}|}\delta_{\frac{k^*+1}{m}}$
+        } \vspace{-0.1cm}\\
+        \State \textbf{2) Update the weights for each $S_{\theta_i}$ and $f_r$}:
+            \State $w_{i}(t+1) = \frac{w_{i}(t) \exp\bigl(\eta \big(\mathbb{E}_{p \sim \hat{P}_t}[S_{\alpha, i}(p, Y_t)] 
+            - S_{\alpha, i}(\hat{f}_i(t), Y_t)\big)\bigr)}{\sum_{i} w_{i}(t) \exp\bigl(\eta \big(\mathbb{E}_{p \sim \hat{P}_t}[S_{\alpha, i}(p, Y_t)] 
+            - S_{\alpha, i}(\hat{f}_i(t), Y_t)\big)\bigr)}, \quad \forall i \in \{0, \ldots, m-1\};$ \vspace{-0.1cm}\\
+    \EndFor
+    \end{algorithmic}
+  \end{algorithm}

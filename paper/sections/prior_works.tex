@@ -82,36 +82,36 @@ In this paper, $\cl := \{S:[0,1]\times \{0,1\} \to [0,1] \mid S \text{ is proper
 \end{theorem}
 Using this, the paper simplifies $v$ to a discrete set $\{\frac{1}{2m}+\frac{i}{m}: i \in \{0, ..., m-1\}\}$, then proposes Algorithm \ref{alg:omni-twoplayer} based on two-player games and proves theoretical guarantee of it.
 
-\begin{algorithm}
-\caption{Two-player game based omniprediction} \label{alg:omni-twoplayer}
-\begin{algorithmic}[1]
-\State \textbf{Data:} Data $\{(X_i, Y_i)\}_{i=1}^n$, hyperparameters $m \in \mathbb{N}$, $\eta > 0$, competitor functions $\{\hat{f}_{\theta_i}\}_{i=0}^{m-1}$.
-\State $q_i(1) = \frac{1}{m}$, for all $i \in \{0, \ldots, m-1\}$;
-\For{$t = 1, \ldots, n$}
-    \State Solve 
-        \begin{align}\label{eq:omni-twoplayer-minimax}
-            \hat{P}_t(x) = \arg\min_{P \in \Delta_m} \max_{p_y \in [0,1]} 
-                \mathbb{E}_{Y' \sim \text{Ber}(p_y),\, p \sim P}
-                [S(p, (x, Y'); q(t))];
-        \end{align}
-    \State Update the weights for each $S_{\theta_i}$ based on the current prediction $\hat{P}_t(X_t)$:
-        \begin{align*}
-            q_i(t+1) \propto q_i(t) \exp\bigl(\eta \big(\mathbb{E}_{p \sim \hat{P}_t(X_t)}[S_{\theta_i}(p, Y_t)] 
-            - S_{\theta_i}(\hat{f}_{\theta_i}(X_t), Y_t)\big)\bigr), \quad \forall i \in \{0, \ldots, m-1\};
-        \end{align*}
-\EndFor
-\State \textbf{return} $\hat{P} = \frac{1}{n} \sum_{i=1}^n \hat{P}_i$
-\end{algorithmic}
-\end{algorithm}
+% \begin{algorithm}
+% \caption{Two-player game based omniprediction} \label{alg:omni-twoplayer}
+% \begin{algorithmic}[1]
+% \State \textbf{Data:} Data $\{(X_i, Y_i)\}_{i=1}^n$, hyperparameters $m \in \mathbb{N}$, $\eta > 0$, competitor functions $\{\hat{f}_{\theta_i}\}_{i=0}^{m-1}$.
+% \State $q_i(1) = \frac{1}{m}$, for all $i \in \{0, \ldots, m-1\}$;
+% \For{$t = 1, \ldots, n$}
+%     \State Solve 
+%         \begin{align}\label{eq:omni-twoplayer-minimax}
+%             \hat{P}_t(x) = \arg\min_{P \in \Delta_m} \max_{p_y \in [0,1]} 
+%                 \mathbb{E}_{Y' \sim \text{Ber}(p_y),\, p \sim P}
+%                 [S(p, (x, Y'); q(t))];
+%         \end{align}
+%     \State Update the weights for each $S_{\theta_i}$ based on the current prediction $\hat{P}_t(X_t)$:
+%         \begin{align*}
+%             q_i(t+1) \propto q_i(t) \exp\bigl(\eta \big(\mathbb{E}_{p \sim \hat{P}_t(X_t)}[S_{\theta_i}(p, Y_t)] 
+%             - S_{\theta_i}(\hat{f}_{\theta_i}(X_t), Y_t)\big)\bigr), \quad \forall i \in \{0, \ldots, m-1\};
+%         \end{align*}
+% \EndFor
+% \State \textbf{return} $\hat{P} = \frac{1}{n} \sum_{i=1}^n \hat{P}_i$
+% \end{algorithmic}
+% \end{algorithm}
 
-\begin{theorem}\label{thm:omni-twoplayer}
-Let $\mathcal{F}$ be a function class with finite VC dimension $d$ and assume that the base predictors satisfy (4.2). Then, the randomized predictor $\hat{P}$ returned by Algorithm~\ref{alg:omni-twoplayer} with parameters $m = O(\sqrt{\log(n)/n})$ and $\eta = O(\sqrt{\log(m)/n})$ has omniprediction error bounded as
-\[
-    \sup_{S \in \mathcal{L}_{\text{proper,lc}},\, f \in \mathcal{F}}
-    \mathbb{E}_{(X,Y)} \big| \mathbb{E}_{p \sim \hat{P}(X)} [S(p, Y)] - \mathbb{E}[S(f(X), Y)] \big|
-    \le \tilde{O}\!\left( \sqrt{\frac{d}{n}} \right).
-\]
-\end{theorem}
+% \begin{theorem}\label{thm:omni-twoplayer}
+% Let $\mathcal{F}$ be a function class with finite VC dimension $d$ and assume that the base predictors satisfy (4.2). Then, the randomized predictor $\hat{P}$ returned by Algorithm~\ref{alg:omni-twoplayer} with parameters $m = O(\sqrt{\log(n)/n})$ and $\eta = O(\sqrt{\log(m)/n})$ has omniprediction error bounded as
+% \[
+%     \sup_{S \in \mathcal{L}_{\text{proper,lc}},\, f \in \mathcal{F}}
+%     \mathbb{E}_{(X,Y)} \big| \mathbb{E}_{p \sim \hat{P}(X)} [S(p, Y)] - \mathbb{E}[S(f(X), Y)] \big|
+%     \le \tilde{O}\!\left( \sqrt{\frac{d}{n}} \right).
+% \]
+% \end{theorem}
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

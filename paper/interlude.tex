@@ -3,26 +3,31 @@
 Pinball loss optimization at each quantile level performs the following Hedge algorithm:
 
 \begin{enumerate}
-    \item Base forecasters $f_j$, $j \in [F]$ with $\tau_n$-quantile forecasts at time $t$: $f_j^n(t)$
-    \item $w_{n,f}(1) = 1/F$ for all $n \in [N]$ and $j \in [F]$
+    \item Base forecasters $f_r$, $r \in [F]$ with $\tau_n$-quantile forecasts at time $t$: $f_r^n(t)$
+    \item $w_{n,r}(1) = 1/F$ for all $n \in [N]$ and $r \in [F]$
     \item For $t = 1, 2, \ldots, T$:
     \begin{enumerate}
-        \item \textbf{Predict:} $\hat{f}_{n}(t) = \sum_{j=1}^F w_{n,j} f_j^n(t)$
-        \item Update weights $w_{n,j}(t+1) = w_{n,j}(t) \exp(-\eta_f \ell_{n,j}(t))$
-        \item Normalize weights: $w_{n,j}(t+1) = w_{n,j}(t+1) / \sum_{j=1}^F w_{n,j}(t+1)$, $\forall n \in [N], f \in [F]$
+        \item \textbf{Predict:} $\hat{f}_{n}(t) = \sum_{r=1}^F w_{n,r} f_r^n(t)$
+        \item Update weights $w_{n,r}(t+1) = w_{n,r}(t) \exp(-\eta_f \ell_{n,r}(t))$
+        \item Normalize weights: $w_{n,r}(t+1) = w_{n,r}(t+1) / \sum_{r=1}^F w_{n,r}(t+1)$, $\forall n \in [N], r \in [F]$
     \end{enumerate}
 \end{enumerate}
 
 This algorithms yields the following guarantee for each quantile level $\tau_n$:
 \[
-\frac{1}{T}\sum_{t=1}^T \rho_\tau(Y_t - \hat{f}_{n}(t)) \leq \min_f \frac{1}{T}\sum_{t=1}^T \rho_{\tau_n}(Y_t - f_j^n(t)) + \co\left(\sqrt{\frac{[\rho_{\tau_n}(Y-f)]^2\log F}{T}}\right)
+\frac{1}{T}\sum_{t=1}^T \rho_\tau(Y_t - \hat{f}_{n}(t)) \leq \min_r \frac{1}{T}\sum_{t=1}^T \rho_{\tau_n}(Y_t - f_r^n(t)) + \frac{\eta}{T} \sum_{t=1}^T w_{n,r}(t) \rho_{\tau_n}(Y_t-f_r^n(t))^2 + \frac{\log F}{\eta T}
+% \co\left(\sqrt{\frac{[\rho_{\tau_n}(Y-f)]^2\log F}{T}}\right)
 \]
 which gives the omniprediction error bound of
-\[
-\sup_{j \in [F], n \in [N]} \frac{1}{T}\sum_{t=1}^T \rho_\tau(Y_t - \hat{f}_{n}(t)) - \frac{1}{T}\sum_{t=1}^T \rho_{\tau_n}(Y_t - f_j^n(t)) \leq \co\left(\sqrt{\frac{\max_n[\rho_{\tau_n}(Y-f)]^2\log F}{T}}\right)
-\]. 
+\begin{align*}
+    \sup_{r \in [F], n \in [N]} \frac{1}{T}\sum_{t=1}^T \rho_\tau(Y_t - \hat{f}_{n}(t)) - \frac{1}{T}\sum_{t=1}^T \rho_{\tau_n}(Y_t - f_r^n(t)) 
+    &\leq \max_{n\in[N]} \left( \frac{\eta}{T} \sum_{t=1}^T w_{n,r}(t) \rho_{\tau_n}(Y_t-f_r^n(t))^2 + \frac{\log F}{\eta T} \right) \\
+    &= \co\left(\sqrt{\frac{\max_n[\rho_{\tau_n}(Y-f)]^2\log F}{T}}\right)    
+\end{align*}
+. 
 
-Meanwhile, the omnipredictiona algorithm, which outputs $\hat{p}_{n}(t)$ yields the following guarantee:
-\[
-\sup_{j \in [F], n \in [N]} \frac{1}{T}\sum_{t=1}^T \rho_\tau(Y_t - \hat{p}_{n}(t)) - \frac{1}{T}\sum_{t=1}^T \rho_{\tau_n}(Y_t - f_j^n(t)) \leq \co\left(\sqrt{\frac{\max_n[\rho_{\tau_n}(Y-f) - \rho_{\tau_n}(Y-\hat{p})]^2\log NF}{T}}\right)
-\]. 
+Meanwhile, the omniprediction algorithm, which outputs $\hat{p}_{n}(t)$, yields the following guarantee:
+\begin{align*}
+\sup_{j \in [F], n \in [N]} \frac{1}{T}\sum_{t=1}^T & \rho_\tau(Y_t - \hat{p}_{n}(t)) - \frac{1}{T}\sum_{t=1}^T \rho_{\tau_n}(Y_t - f_r^n(t)) \\
+&\leq \text{minimax value} + \co\left(\sqrt{\frac{\max_n[\rho_{\tau_n}(Y-f) - \rho_{\tau_n}(Y-\hat{p})]^2\log NF}{T}}\right)
+\end{align*}

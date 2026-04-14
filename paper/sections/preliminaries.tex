@@ -1,0 +1,139 @@
+\section{Preliminaries}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \subsection{Notations}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Proper scoring rules and consistent scoring functions}
+Proper scoring rules (or loss functions) incentivize forecasters to truthfully report their predictive beliefs. Specifically, a proper scoring rule ensures that the expected loss is minimized when the reported predictive distribution coincides with the true data-generating distribution.
+
+Let $\cf$ be a class of probability measures on the Borel $\sigma$-algebra of $\R$. A scoring rule is a function $S : \cf \times \R \to \R$ that assigns a loss $S(P,y)$ to a predictive distribution $P \in \cf$ and an observation $y \in \R$.
+
+\begin{defi}[Proper scoring rule]
+A scoring rule $S$ is \textbf{proper} relative to the class $\cf$ if
+\[
+\mathbb{E}_{Y\sim P}[S(P,Y)] \leq \mathbb{E}_{Y\sim P}[S(P,Y)], \quad \forall P, Q \in \cf.
+\]
+If equality holds only when $Q = P$, the scoring rule is called \emph{strictly proper}.
+\end{defi}
+
+In many applications, however, interest lies not in the full predictive distribution but in specific functionals such as the mean or a quantile. In such cases, scoring rules for distributions are no longer directly applicable, and an analogous notion is required for point forecasts. This motivates the concept of consistency.
+
+Let $D = D_1 \times D_2 \subseteq \mathbb{R}^2$, and let $S : D \to \mathbb{R}$ be a scoring function. Consider a (possibly set-valued) functional $T : \mathcal{F} \to 2^{D_1}$.
+
+\begin{defi}[Consistency, \cite{murphy1985consistency}, \cite{gneiting2011point}]
+A scoring function $S$ is \textbf{consistent} for the functional $T$ relative to the class $\mathcal{F}$ if
+\[
+\mathbb{E}_{Y\sim F}[S(t,Y)] \leq \mathbb{E}_{Y\sim F}[S(x,Y)], \quad \forall F \in \mathcal{F}, t \in T(F), x \in D_1.
+\]
+If equality holds only when $t = x$, the scoring function is called \emph{strictly consistent}.
+\end{defi}
+
+Consistency ensures that the expected loss is minimized when the point forecast coincides with the target functional (e.g., the true quantile), thereby extending the idea of propriety from distributions to point-valued predictions.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Omniprediction and two-player game based omniprediction algorithm}
+Introduced by \cite{gopalan2022omnipredictors}, \emph{omniprediction} studies the problem of constructing predictors that perform well simultaneously across a family of loss functions, relative to a class of competitors. This framework is particularly natural in settings with heterogeneous users, each associated with their own utility (or loss) function.
+
+A key observation is that if a user chooses the best action that minimizes their loss, while believing the given predictive distribution, then this decision-making induces a proper scoring rule. Formally, given a predictive distribution $F$ and a user utility $u$, if the user selects an action as
+\[
+a(F;u) \in \arg\min_{a\in\mathcal{A}} \mathbb{E}_{Y\sim F}[u(a,Y)],
+\]
+then
+\[
+S(F,Y) := u(a(F;u), Y)
+\]
+is a proper scoring rule. Therefore, constructing a predictor that performs well across all proper scoring rules will also perform well for all users. A similar argument holds when point forecasts, e.g., single quantile level forecasts or multiple quantile level forecasts, are given to the user and the user selects the best action that minimizes their loss while believing the given point forecast. In this case, such user actions induce a consistent scoring function.
+
+Motivated by this connection, we consider the omniprediction objective over \textit{all} scoring functions that are consistent for quantile functions and a class $\mathcal{F}$ of comparator functions. While omniprediction was originally formulated in a batch setting, our focus is on an online learning formulation, which can be reduced to the batch case via standard online-to-batch conversion arguments.
+
+Specifically, given a sequence $(X_t, Y_t)_{t=1}^T$, we construct predictions $p_t$ and aim to minimize the regret
+\begin{align}\label{eq:omni_objective}
+    \sup_{S \in \mathcal{S}_{\text{consistent}},\, f \in \mathcal{F}} 
+    \frac{1}{T} \sum_{t=1}^T \Big( S(p_t, Y_t) - S(f(X_t), Y_t) \Big).    
+\end{align}
+In the batch setting, this corresponds to minimizing
+\[
+\sup_{S \in \mathcal{S}_{\text{consistent}},\, f \in \mathcal{F}} 
+\mathbb{E}_{(X,Y)} \big[ S(\hat{p}(X), Y) \big] - \mathbb{E}_{(X,Y)} \big[ S(f(X), Y) \big],
+\]
+where $\hat{p}$ is the learned predictor.
+
+
+One of the approaches to obtaining an omnipredictor $\hat{p}$ that minimizes the omniprediction objective \eqref{eq:omni_objective} for a finite set of loss functions $\cl$ is to use a two-player game-based algorithm. One player constructs a weighted sum of loss functions in $\cl$, and the other player responds with the best (randomized) predictor that minimizes the loss. Algorithm \ref{alg:omni-twoplayer} shows the details of the algorithm.
+
+\begin{algorithm}
+    \caption{Two-player game-based omniprediction} \label{alg:omni-twoplayer}
+    \begin{algorithmic}[1]
+    \State \textbf{Data:} Data $\{Y_t\}_{t=1}^T \in \cy$, learning rate $\eta > 0$, a class of competitor functions $\cf$, loss functions $\cs = \{S_i\}_{i=1}^m$
+    \State \textbf{Initialize:} $w_i(1) = \frac{1}{m}$, for all $i \in [m]$;
+    \For{$t = 1, \ldots, T$}
+        \State \textbf{Output:}
+            \begin{align}\label{eq:omni_pre_minimax}
+                \hat{P}_t = \arg\min_{P \in \cp(\cy)} \max_{P_y \in \cp(\cy)} \sup_{f \in \cf}
+                    \sum_{i=1}^m w_i(t) \E_{p \sim P, Y \sim P_y}[S_i(p, Y) - S_i(f(t), Y)];
+            \end{align}
+        \State \textbf{Update the weights} for each $S_i$ based on the current prediction $\hat{P}_t$:
+            \begin{align*}
+                w_i(t+1) \propto w_i(t) \exp\bigl(\eta \sup_{f \in \cf}\big(\E_{p \sim \hat{P}_t}[S_i(p, Y_t)] 
+                - S_i(f(t), Y_t)\big)\bigr), \quad \forall i \in [m];
+            \end{align*}
+    \EndFor
+\end{algorithmic}
+\end{algorithm}
+
+However, computing the minimax problem \eqref{eq:omni_pre_minimax} is not trivial. The difficulty is twofold. One challenge is find $f \in \cf$ that maximizes $\sum_{i=1}^m w_i(t) \E_{p \sim P, Y \sim P_y}[S_i(p, Y)] - S_i(f(t), Y)$, and the other is solving the minimax problem after the best $f \in \cf$ for each $S_i$ is determined. To address the $\sup_{f \in \cf}$ issue, \cite{isaac2025omni} proposes using a separate hold-out set to pre-compute the best competitor for each loss function $S_i$. In this paper, we address this issue in a different way: under the setting where $\cf$ is finite, we assign weights to each competitor function and update these weights at each time step. To address the second issue, we use the special structure of the set of all consistent scoring functions to simplify the minimax problem and obtain a closed-form solution.
+
+
+
+% \begin{algorithm}
+%     \caption{Two-player game based omniprediction} \label{alg:omni-twoplayer}
+%     \begin{algorithmic}[1]
+%     \State \textbf{Data:} Data $\{(X_i, Y_i)\}_{i=1}^n$, hyperparameters $m \in \mathbb{N}$, $\eta > 0$, competitor functions $\{\hat{f}_{\theta_i}\}_{i=0}^{m-1}$.
+%     \State $q_i(1) = \frac{1}{m}$, for all $i \in \{0, \ldots, m-1\}$;
+%     \For{$t = 1, \ldots, n$}
+%         \State Solve 
+%             \begin{align}\label{eq:omni-twoplayer-minimax}
+%                 \hat{P}_t(x) = \arg\min_{P \in \Delta_m} \max_{p_y \in [0,1]} 
+%                     \mathbb{E}_{Y' \sim \text{Ber}(p_y),\, p \sim P}
+%                     [S(p, (x, Y'); q(t))];
+%             \end{align}
+%         \State Update the weights for each $S_{\theta_i}$ based on the current prediction $\hat{P}_t(X_t)$:
+%             \begin{align*}
+%                 q_i(t+1) \propto q_i(t) \exp\bigl(\eta \big(\mathbb{E}_{p \sim \hat{P}_t(X_t)}[S_{\theta_i}(p, Y_t)] 
+%                 - S_{\theta_i}(\hat{f}_{\theta_i}(X_t), Y_t)\big)\bigr), \quad \forall i \in \{0, \ldots, m-1\};
+%             \end{align*}
+%     \EndFor
+%     \State \textbf{return} $\hat{P} = \frac{1}{n} \sum_{i=1}^n \hat{P}_i$
+% \end{algorithmic}
+% \end{algorithm}
+
+% Introduced by \cite{gopalan2022omnipredictors}, omniprediction describes the task of constructing predictors that minimize multiple loss functions simultaneously, compared to a set of competitor functions. Consider a case where there's a diverse set of users with different loss functions, and we want our predictor to minimize the loss for all of them. Let $\cl$ be a set of users' loss functions, and $\cf$ be a set of competitor functions.
+% Let $a(p;S) \in \arg\min_{a\in\ca} \E_{Y'\sim\text{Ber}(p)}[S(a,Y')]$ denote an action in $\ca$ that minimizes the loss $S$ under $Y'\sim\text{Ber}(p)$. 
+% Then, given a set of losses $\cl$ and competitor functions $\cf$, omniprediction aims to minimize
+% \[
+% \sup_{S\in\cl, f\in\cf} \E[S(a(\phat(X);S), Y)] - \E[S(f(X), Y)],
+% \]
+% where we consider the prediction $\phat$ as a deterministic function (not a random function that changes if $X$ changes).
+
+% The goal of the paper is to use $(X,Y)$ to construct a predictor $\phat(X)$ with low omniprediction error given a comparators (base forecasts) $\cf$, i.e.
+% \[
+% \sup_{S\in\cl_{\text{proper}}, f\in\cf} \E[S(\phat(X), Y)] - \E[S(f(X), Y)].
+% \]
+
+% \paragraph{Real world example}
+% A motivating example would be one where several agencies submit COVID-19 patient forecasts, $f\in \cf$, to the CDC, and the CDC wants to publish a single forecast that is useful to various people and organizations with different loss (or utility) functions, $S \in \cl_{\text{proper}}$.
+
+% In this paper, $\cl := \{S:[0,1]\times \{0,1\} \to [0,1] \mid S \text{ is proper}\}$ and $\cl_{\text{proper, lc}}$ is a subset of $\cl_{\text{proper}}$ that contains left-continuous loss functions. 
+
+
+
+% \begin{theorem}\label{thm:omni-twoplayer}
+% Let $\mathcal{F}$ be a function class with finite VC dimension $d$ and assume that the base predictors satisfy (4.2). Then, the randomized predictor $\hat{P}$ returned by Algorithm~\ref{alg:omni-twoplayer} with parameters $m = O(\sqrt{\log(n)/n})$ and $\eta = O(\sqrt{\log(m)/n})$ has omniprediction error bounded as
+% \[
+%     \sup_{S \in \mathcal{L}_{\text{proper,lc}},\, f \in \mathcal{F}}
+%     \mathbb{E}_{(X,Y)} \big| \mathbb{E}_{p \sim \hat{P}(X)} [S(p, Y)] - \mathbb{E}[S(f(X), Y)] \big|
+%     \le \tilde{O}\!\left( \sqrt{\frac{d}{n}} \right).
+% \]
+% \end{theorem}
+

@@ -151,16 +151,11 @@ class VnComputer_v2:
         Vn_values[0] = 0.0
         j_optimal[0] = 0
         
-        time2 = 0.0
-        time3 = 0.0
         for n in range(1, self.N + 1):
-            Vn, j_opt, t2, t3 = self.compute_Vn(n=n, j_opt_min=j_optimal[n-1])
-            time2 += t2
-            time3 += t3
+            Vn, j_opt = self.compute_Vn(n=n, j_opt_min=j_optimal[n-1])
             Vn_values[n] = Vn
             j_optimal[n] = j_opt
             
-        print(f'time2: {time2}, time3: {time3}')
 
         return Vn_values, j_optimal
 
