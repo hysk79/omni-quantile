@@ -125,7 +125,7 @@ V_n = \min_{j \in [m]} \left( \sum_{i=j}^{m-1} \sum_{s=1}^{n} w_i^s \cdot \one_i
 Suppose there exists a pair of indices $n, n+1$ such that $j_n^* > j_{n+1}^*$. Using the definition of $V_n$, we have 
 \begin{align*}
 j_n^* &= \argmin_{j \in [m]} \left( \sum_{i=j}^{m-1} \sum_{s=1}^{n} w_i^s \cdot \one_i^s + \sum_{i=0}^{j-1} \sum_{s=n+2}^{N}  w_i^s \cdot (\one_F - \one_i^s) + \sum_{i=0}^{j-1} w_i^{n+1} \cdot (\one_F - \one_i^{n+1})\right) \\
-j_{n+1}^* &= \argmin_{j \in [m]} \left( \sum_{i=j}^{m-1} \sum_{s=1}^{n+1} w_i^s \cdot \one_i^s + \sum_{i=0}^{j-1} \sum_{s=n+2}^{N}  w_i^s \cdot (\one_F - \one_i^s) + \sum_{i=j}^{m-1} w_i^{n+1} \cdot \one_i^{n+1}\right).
+j_{n+1}^* &= \argmin_{j \in [m]} \left( \sum_{i=j}^{m-1} \sum_{s=1}^{n} w_i^s \cdot \one_i^s + \sum_{i=0}^{j-1} \sum_{s=n+2}^{N}  w_i^s \cdot (\one_F - \one_i^s) + \sum_{i=j}^{m-1} w_i^{n+1} \cdot \one_i^{n+1}\right).
 \end{align*}
 Two expressions share the first two terms and differ in the last term. We abbreviate these terms as following:
 \begin{align*}
