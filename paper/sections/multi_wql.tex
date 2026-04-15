@@ -1,0 +1,41 @@
+\section{Omniprediction for weighted quantile losses}
+In this section, we discuss omniprediction that considers weighted quantile losses as the set of scoring functions of interest. Although this is a much smaller set compared to the set of all scoring functions that are consistent for multiple quantile levels, which we discussed in Section \ref{sec:multi_q}, it is still a non-trivial set of scoring functions that is worth investigating. Importantly, omniprediction for weighted quantile losses does not require any discretization of ground truth base forecasters. 
+
+The section is organized as follows. 
+- Hedge algorithm run on each quantile level also gives omniprediction error bound
+- Two-player game based omniprediction for weighted quantile losses
+- Comparison
+
+\paragraph{Notation}
+Define the pinball loss at quantile level $\tau$ as $\rho_\tau(x) := \tau x\indi{x \geq 0} +(1-\tau)|x|\indi{x < 0} = (\tau - \indi{x < 0})x$. Weighted quantile loss at quantile levels $\{\tau_n\}_{n=1}^N$ is defined as 
+\[
+\ell(\{x_n\}_{n=1}^N, y) := \sum_{n=1}^N w_n \rho_{\tau_n}(y - x_n),
+\]
+where $w_n$ is the weight for the $\tau_n$-level quantile prediction and $\sum_{n=1}^N w_n = 1$. We denote $\cs_{wql}$ as the set of all weighted quantile loss functions.
+
+
+\subsection{Hedge algorithm}
+Consider running Hedge algorithm on each quantile level. For each quantile level $\tau_n$, $n \in [N]$, we run Algorithm \ref{alg:wql_hedge}.
+
+
+\begin{algorithm}
+\caption{Hedge algorithm for single quantile level} \label{alg:wql_hedge}
+\begin{algorithmic}[1]
+\State \textbf{Data:} Data stream $\{Y_t\}_{t=1}^T$, Quantile level $\tau$, Learning rate $\eta> 0$, Base forecasters: $\{f_b\}_{b=1}^B$ that outputs $f_b(t)$ as $\tau$-level quantile estimate at time $t$;
+\State \textbf{Initialize:} $w_{b}(1) = \frac{1}{B}$, $\forall b \in [B]$;
+\For{$t = 1, \ldots, T$}
+    \State 
+    \[
+    w_{b}(t+1) 
+    = \frac{w_{b}(t) \exp\left(-\eta \rho_\tau(Y_t - f_b(t))\right)}{\sum_{b=1}^B w_{b}(t) \exp\left(-\eta \rho_\tau(Y_t - f_b(t))\right)}
+    \]
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+The resulting prediction is $\hat{f}(t) = \sum_{b=1}^B w_{b}(t) f_b(t)$. The resulting error bound is:
+\begin{align*}
+\sup_{b \in [B]} \frac{1}{T}\sum_{t=1}^T \rho_\tau(Y_t - \hat{f}(t)) - \frac{1}{T}\sum_{t=1}^T \rho_\tau(Y_t - f_b(t)) 
+&\leq \max_{b \in [B]} \left( \frac{\eta}{T} \sum_{t=1}^T w_{b}(t) \rho_\tau(Y_t-f_b(t))^2 + \frac{\log B}{\eta T} \right) \\
+&= \co\left(\sqrt{\frac{\max_b[\rho_{\tau}(Y-f)]^2\log B}{T}}\right)    
+\end{align*}
