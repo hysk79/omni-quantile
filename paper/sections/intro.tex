@@ -31,6 +31,12 @@ Although all of these users rely on the same predictive distribution, their indu
 Under the same objective, \cite{isaac2025omni} proposes a two-player game-style algorithm that constructs a binary probabilistic forecast achieving an omniprediction error of $\tilde{\mathcal{O}}\left(\sqrt{VC(\cf)/n}\right)$ with sample size $n$. {\color{blue}Considering the classical result that the optimal error rate for binary classification under $0$–$1$ loss is $\mathcal{O}(\sqrt{VC(\cf)/n})$, this rate worsens only marginally even when optimizing over \textit{all} proper binary scoring rules.} 
 In this paper, we prove that a similar result can be achieved in more complex settings: single quantile estimation and, more generally, simulataneous multiple quantile estimation. We analyze how the omniprediction output differs from the prediction that simply minimizes the (sum of) pinball loss.
 
-The rest of the paper is organized as follows: Section \ref{sec:prior_works} reviews prior works on minimizing the loss over all binary proper loss functions in a sample efficient way and prior works on minimizing the loss over a class of loss functions on continuous domain, not restricting the loss to be proper. Section \ref{sec:single_q} and Section \ref{sec:multi_q} provide the main results of the paper. Section \ref{sec:single_q} provides a sample efficient algorithm for omniprediction of single quantile level forecasts with respect to all consistent loss functions (analogous notion of propriety for single/multiple quantile level forecasts, defined in Definition \ref{def:consistency}) and Section \ref{sec:multi_q} provides a sample efficient algorithm for omniprediction of multiple quantile level forecasts.
+The rest of the paper is organized as follows: Section \ref{sec:preliminaries} reviews prior works on minimizing the loss over all binary proper loss functions in a sample efficient way and prior works on minimizing the loss over a class of loss functions on continuous domain, not restricting the loss to be proper. Section \ref{sec:single_q} and Section \ref{sec:multi_q} provide the main results of the paper. Section \ref{sec:single_q} provides a sample efficient algorithm for omniprediction of single quantile level forecasts with respect to all consistent loss functions (analogous notion of propriety for single/multiple quantile level forecasts, defined in Definition \ref{def:consistency}) and Section \ref{sec:multi_q} provides a sample efficient algorithm for omniprediction of multiple quantile level forecasts.
+
+
+\cite{kleinberg2023ucal}
+
+
 
 {\color{blue}Connection to the continuous case.}
+

@@ -27,7 +27,7 @@ The remainder of this section provides the necessary components in detail. In Se
 
 
 
-\begin{algorithm}
+\begin{algorithm}[h]
   \caption{Online version of two-player game method} \label{alg:omni-twoplayer_online}
   \begin{algorithmic}[1]
   \State \textbf{Data:} Data stream $\{Y_t\}_{t=1}^T$, Grid size $m \in \mathbb{N}$, Learning rate $\eta > 0$, Base forecasters $\cf = \{f_b\}_{b=1}^{B}$.
@@ -35,11 +35,11 @@ The remainder of this section provides the necessary components in detail. In Se
   \For{$t = 1, \ldots, T$}
   \State \textbf{1) Make prediction at time $t$}:
   \begin{align*} %\label{eq:minimax_Pt_single_q}
-  \hat{P}_t = \arg\min_{P \in \Delta_m} \max_{P_y \in \Delta_m} \sum_{i=1}^m \sum_{b=1}^B w_{ib}\E_{p\sim P, Y \sim P_y}[S_{\alpha, i}(p,Y) - S_{\alpha, i}(f_b(t),Y)];
+  \hat{P}(t) = \arg\min_{P \in \Delta_m} \max_{P_y \in \Delta_m} \sum_{i=1}^m \sum_{b=1}^B w_{ib}\E_{p\sim P, Y \sim P_y}[S_{\alpha, i}(p,Y) - S_{\alpha, i}(f_b(t),Y)];
   \end{align*}
   \State \textbf{2) Update the weights $w_{ib}$}:
   \[
-  w_{ib}(t+1) \propto w_{ib}(t) \exp\bigl(\eta \big(\mathbb{E}_{p \sim \hat{P}_t}[S_{\alpha, i}(p, Y_t)] 
+  w_{ib}(t+1) \propto w_{ib}(t) \exp\bigl(\eta \big(\mathbb{E}_{p \sim \hat{P}(t)}[S_{\alpha, i}(p, Y_t)] 
   - S_{\alpha, i}(f_b(t), Y_t)\big)\bigr), \quad \forall i \in [m], b \in [B];
   \]
   \EndFor
@@ -207,7 +207,7 @@ Since $S_{\alpha, i} \in S_\alpha$, the other direction of inequality follows, r
 \subsection{Omniprediction algorithm and theoretical guarantee} \label{subsec:omni_single_q}
 This subsection introduces the omniprediction algorithm that optimizes the losses for all consistent scoring rules for single quantile forecasts. Then, we prove a theoretical upper bound for the omniprediction error of the algorithm.
 
-\begin{algorithm}
+\begin{algorithm}[h]
   \caption{Single quantile level omniprediction} \label{alg:omni-twoplayer_online_q}
   \begin{algorithmic}[1]
   \State \textbf{Data:} Data stream $\{Y_t\}_{t=1}^T$, Grid size $m \in \mathbb{N}$, Learning rate $\eta > 0$, Base forecasters $\cf = \{f_b\}_{b=1}^{B}$.
@@ -359,7 +359,7 @@ Lastly, we present the omniprediction error bound for Algorithm \ref{alg:omni-tw
   \label{thm:omni-twoplayer_online_q}
   For a quantile level $\alpha \in (0,1)$, let $S_\alpha$ denote the class of scoring functions with representation \eqref{eq:elem_score_q} with $H(\R) = 1$ (the set of \textit{all} scoring functions that are consistent for the $\alpha$-level quantile functional under mild regularity conditions). Consider base forecasters $\{f_b\}_{b=1}^B$ that provide $\alpha$-level quantile forecasts $f_b(t)$ at each time step $t \in [T]$. With the target values $Y_t$, forecaster predictions $f_b(t)$ for $t \in [T], b \in [B]$ each taking values in a uniform grid of size $m$, and the learning rate $\eta = \sqrt{\frac{\log mB}{T}}$, the output $\hat{P}_t$ from Algorithm \ref{alg:omni-twoplayer_online_q} achieves the following omniprediction error:
   \begin{align*}
-  \sup_{S \in S_\alpha,\, b \in [B]} \frac{1}{T} \sum_{t=1}^T \E_{p \sim \hat{P}_t} [S(p, Y_t)] - \E[S(f_b(t), Y_t)]
+  \sup_{S \in S_\alpha,\, b \in [B]} \frac{1}{T} \sum_{t=1}^T \E_{p \sim \hat{P}(t)} [S(p, Y_t)] - \E[S(f_b(t), Y_t)]
   \leq 2\left(\sqrt{\frac{\log mB}{T}}\right)
   \end{align*}
 \end{theorem}
@@ -368,18 +368,18 @@ Lastly, we present the omniprediction error bound for Algorithm \ref{alg:omni-tw
 \begin{proof}
 Observe that $S_{\alpha, i}(x,y) \in \{0, \alpha, 1-\alpha\}$ and $|S_{\alpha, i}(x_1,y_1) - S_{\alpha, i}(x_2,y_2)| \leq 1$. Without loss of generality, we assume that $Y_t, f_b(t) \in \{0, \frac{1}{m}, 1\}$ for all $t \in [T], b \in [B]$, as this construction extends to any bounded interval $[-B_\ell, B_u]$ via rescaling. Also note that $S_{\alpha, \theta}(p, Y_t)$ or $S_{\alpha, \theta}(f_b(t), Y_t)$ with $\theta \notin [-B_\ell, B_u]$ is always zero for $p \in [-B_\ell, B_u]$. Therefore non-negative mass of $H$ on $\R \backslash [-B_\ell, B_u]$ is irrelevant to the omniprediction error.
 
-Regret bound of hedge algorithm (Theorem 1.5 of \cite{hazanoco}) gives the following:
+Regret bound of hedge algorithm (Theorem \ref{appthm:hedge_regret}) gives the following:
 \begin{align}
   \max_{i \in [m], b \in [B]} \frac{1}{T} \sum_{t=1}^T \sum_{b=1}^B 
-  & \E_{p\sim \hat{P}_t}\left[ S_{\alpha, i}(p, Y_t) - S_{\alpha, i}(f_b(t), Y_t) \right] \nonumber\\
-  & \leq \frac{1}{T} \sum_{t=1}^T \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}(t) \, \E_{p\sim \hat{P}_t}\left[ S_{\alpha, i}(p, Y_t) - S_{\alpha, i}(f_b(t), Y_t) \right] + \eta + \frac{\log mB}{T\eta} \label{ieq:hedge_w_update}
+  & \E_{p\sim \hat{P}(t)}\left[ S_{\alpha, i}(p, Y_t) - S_{\alpha, i}(f_b(t), Y_t) \right] \nonumber\\
+  & \leq \frac{1}{T} \sum_{t=1}^T \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}(t) \, \E_{p\sim \hat{P}(t)}\left[ S_{\alpha, i}(p, Y_t) - S_{\alpha, i}(f_b(t), Y_t) \right] + \eta + \frac{\log mB}{T\eta} \label{ieq:hedge_w_update}
 \end{align}
 
 Putting these together with previous lemmas, we have:
   \begin{align*}
-    & \sup_{S \in S_\alpha,\, f \in \cf} \frac{1}{T} \sum_{t=1}^T \E_{p \sim \hat{P}_t} [S(p, Y_t)] - S(f(t), Y_t) \\
-    & \underset{\text{Lem. } \ref{lem:discretize_single_q}}{=} \sup_{i \in [m], b \in [B]} \frac{1}{T} \sum_{t=1}^T \E_{p \sim \hat{P}_t} [S_{\alpha, i}(p, Y_t)] - S_{\alpha, i}(f(t), Y_t) \\
-    & \underset{Ieq. \eqref{ieq:hedge_w_update}}{\leq} \frac{1}{T} \sum_{t=1}^T \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}(t) \, \E_{p\sim \hat{P}_t}\left[ S_{\alpha, i}(p, Y_t) - S_{\alpha, i}(f_b(t), Y_t) \right] + 2\left(\sqrt{\frac{\log mB}{T}}\right) \\
+    & \sup_{S \in S_\alpha,\, f \in \cf} \frac{1}{T} \sum_{t=1}^T \E_{p \sim \hat{P}(t)} [S(p, Y_t)] - S(f(t), Y_t) \\
+    & \underset{\text{Lem. } \ref{lem:discretize_single_q}}{=} \sup_{i \in [m], b \in [B]} \frac{1}{T} \sum_{t=1}^T \E_{p \sim \hat{P}(t)} [S_{\alpha, i}(p, Y_t)] - S_{\alpha, i}(f(t), Y_t) \\
+    & \underset{Ieq. \eqref{ieq:hedge_w_update}}{\leq} \frac{1}{T} \sum_{t=1}^T \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}(t) \, \E_{p\sim \hat{P}(t)}\left[ S_{\alpha, i}(p, Y_t) - S_{\alpha, i}(f_b(t), Y_t) \right] + 2\left(\sqrt{\frac{\log mB}{T}}\right) \\
     & \underset{\text{Lem. } \ref{lem:minimax_single_q_neg}}{\leq} 2\left(\sqrt{\frac{\log mB}{T}}\right).
   \end{align*}
 \end{proof} 

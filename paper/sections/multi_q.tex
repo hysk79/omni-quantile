@@ -48,44 +48,46 @@ In a similar vein to the discretization scheme introduced in Section \ref{subsec
 \end{align*}
 where $w_i^n$ is the weight for the $i$-th grid point of the $n$-th quantile level and $S_{n, i}(x, Y) = (\one(Y < x)-\tau_n)(\one(\theta_i<x)-\one(\theta_i<Y))$ as defined previously.
 
-With the discretization, Algorithm \ref{alg:omni-twoplayer_online_multi_q} presents the multiple quantile level omniprediction algorithm. We abbreviate $S_{\tau_n, \theta_i}$ as $S_{n, i}$. The main computational bottleneck lies in computing $V_n$ and $j_n^*$ for each $n \in [N-1]$ (see Equation~\ref{eq:Vn_def_multi_q}). A naive computation of the minimizers $\{j_n^*\}$ in Lemma~\ref{lem:jn_sort} requires $O(m^2 N^2 B)$ time. Appendix~\ref{appsubsec:multi_q_fast} introduces a subroutine that computes all $\{j_n^*\}$ in $O(mNB)$ time by exploiting the structure of $\{V_n\}$.
+With the discretization, Algorithm \ref{alg:omni-twoplayer_online_multi_q} presents the multiple quantile level omniprediction algorithm. We abbreviate $S_{\tau_n, \theta_i}$ as $S_{n, i}$. The main computational bottleneck lies in computing $V_n^*$ and $j_n^*$ for each $n \in [N-1]$ (see Equation~\ref{eq:Vn_def_multi_q}). A naive computation of the minimizers $\{j_n^*\}$ in Lemma~\ref{lem:jn_sort} requires $O(m^2 N^2 B)$ time. Appendix~\ref{appsubsec:multi_q_fast} introduces a subroutine that computes all $\{j_n^*\}$ in $O(mNB)$ time by exploiting the structure of $\{V_n^*\}$.
 
 
-\begin{algorithm}
+\begin{algorithm}[h]
   \caption{Two-player game based multiple quantile level online omniprediction} \label{alg:omni-twoplayer_online_multi_q}
   \begin{algorithmic}[1]
   \State \textbf{Data:} Data stream $\{Y_t\}_{t=1}^T$, quantile levels $\tau_1 < \tau_2 < ... < \tau_N$, Grid size $m\in \mathbb{N}$, Learning rate $\eta> 0$, Base forecasters: $\{f_b\}_{b=1}^B$ that outputs $f_b^n(t)$ as $\tau_n$-level quantile estimate at time $t$;
-  \State \textit{Initialize:} $w_{ib}^n(1) = \frac{1}{mNB}$, $\forall i \in [m], n \in [N], b \in [B]$;
+  \State \textbf{Initialize:} $w_{ib}^n(1) = \frac{1}{mNB}$, $\forall i \in [m], n \in [N], b \in [B]$;
   \For{$t = 1, \ldots, T$}
     \State \textbf{1) Make prediction at time $t$}:
-      \State Define $V_0 = V_N = 0$, $j_0^* = 0$, $j_N^* = m$;
-      \State Define $\one_i^n(t) = \{\indi{\theta_i < f_b^n(t)}\}_{b=1}^B \in \R^B$ and $\one_B = (1,..,1)\in \R^B$ for $i \in [m]$ and $n \in [N]$.
+      \State Define $V_0^* = V_N^* = 0$, $j_0^* = 0$, $j_N^* = m$;
+      \State Define $w_i^n = \{w_{ib}^n(t)\}_{b=1}^B \in \R^B$, $\one_i^n = \{\indi{\theta_i < f_b^n(t)}\}_{b=1}^B \in \R^B$ and $\one_B = (1,..,1)\in \R^B$ for $\forall i, n$.
       \For{$n=1, \ldots, N-1$}
-      \State Compute $V_n(j)$ for $j \in [m]$:
+      \State Define $V_n(j)$ as 
         \(
-        V_n(j) = \sum_{i=j+1}^{m} \sum_{s=1}^{n} w_i^s \cdot \one_i^s(t) + \sum_{i=1}^{j} \sum_{s=n+1}^{N}  w_i^s \cdot (\one_B - \one_i^s(t))
+        V_n(j) = \sum_{i=j+1}^{m} \sum_{s=1}^{n} w_i^s \cdot \one_i^s + \sum_{i=1}^{j} \sum_{s=n+1}^{N}  w_i^s \cdot (\one_B - \one_i^s)
         \)
-      \State Compute $V_n$ and $j_n^*$:
+      \State Compute $V_n^*$ and $j_n^*$:
         \begin{align} \label{eq:Vn_def_multi_q}
-          V_n = \min_{j \in [m]} V_n(j), \qquad
-          j_n^* = \min\left\{j \mid j\in [j_{n-1}^*, m],  V_n(j) = V_n \right\}
+          V_n^* = \min_{j \in [m]} V_n(j), \qquad
+          j_n^* = \min\left\{j \mid j\in [j_{n-1}^*, m],  V_n(j) = V_n^* \right\}
         \end{align}
       \EndFor \vspace{-0.2cm}\\
       \For{$n=1, \ldots, N$}
         \If{$V_n(j_{n-1}^*) = V_n(j_n^*)$}
-          \State $\hat{P}_t^n = \delta_{j_{n-1}^*/m}$;
+          \State $\hat{P}_n(t) = \delta_{j_{n-1}^*/m}$;
         \Else
-          \State Define $B_k := \sum_{i=1}^{k} w_i^n(t) \cdot \one_B - \sum_{i=1}^{m}w_i^n(t) \cdot \one_i^n(t)$
-          \State Find $j_{n-1}^* \leq k_n < j_n^*$ s.t. $B_{k_n} < V_{n-1} - V_n \leq B_{k_n+1}$ (Existence proved in Lemma \ref{lem:Pn_def})
-          \State $\hat{P}_t^n = (1-C_n)\delta_{k_n/m} + C_n\delta_{((k_n+1)/m)}$, where $C_n = \left( V_{n-1} - V_n - B_{k_n} \right) / (w_{k_n}^n \cdot \one_B)$
+          \State Define $B_k := \sum_{i=1}^{k} w_i^n \cdot \one_B - \sum_{i=1}^{m}w_i^n \cdot \one_i^n$
+          \State Find $j_{n-1}^* \leq k_n < j_n^*$ s.t. $B_{k_n} < V_{n-1}^* - V_n^* \leq B_{k_n+1}$ (Existence proved in Lemma \ref{lem:Pn_def})
+          \State $\hat{P}_n(t) = (1-C_n)\delta_{k_n/m} + C_n\delta_{((k_n+1)/m)}$, where $C_n = \left( V_{n-1}^* - V_n^* - B_{k_n} \right) / (w_{k_n}^n \cdot \one_B)$
         \EndIf
       \EndFor
-      \State \textbf{Output} $\hat{P}_t = \{\hat{P}_t^n\}_{n=1}^N$;  \vspace{-0.1cm}\\
-      \State \textbf{2) Update the weights for each $S_{n,i} = (\one(y<x)-\tau_n)(\one(\theta_i<x)-\one(\theta_i<y))$}:
-          \State $w_{ib}^n(t+1) 
+      \State \textbf{Output} $\hat{P}(t) = \{\hat{P}_n(t)\}_{n=1}^N$;  \vspace{-0.1cm}\\
+      \State \textbf{2) Update the weights for each $S_{n,i}$ and $f_b$}:
+          \[
+          w_{ib}^n(t+1) 
           = \frac{w_{ib}^n(t) \exp\bigl(\eta \big(\mathbb{E}_{p \sim \hat{P}_t^n}[S_{n,i}(p, Y_t)] 
           - S_{n,i}(\hat{f}_i^n(t), Y_t)\big)\bigr)}
-          {\sum_{i=1}^{m} \sum_{n=1}^N \sum_{b=1}^B w_{ib}^n(t) \exp\bigl(\eta \big(\mathbb{E}_{p \sim \hat{P}_t^n}[S_{n,i}(p, Y_t)] - S_{n,i}(\hat{f}_b^n(t), Y_t)\big)\bigr)}, \quad \forall i \in [m], n \in [N], b \in [B];$ \vspace{-0.1cm}\\
+          {\sum_{i=1}^{m} \sum_{n=1}^N \sum_{b=1}^B w_{ib}^n(t) \exp\bigl(\eta \big(\mathbb{E}_{p \sim \hat{P}_t^n}[S_{n,i}(p, Y_t)] - S_{n,i}(\hat{f}_b^n(t), Y_t)\big)\bigr)}, \quad \forall i, n, b;
+          \]
   \EndFor
   \end{algorithmic}
 \end{algorithm}
@@ -106,25 +108,26 @@ with the constraint that the joint distribution ($P_1, P_2, ..., P_N$) always sa
 \smallskip
 
 
-Before presenting a closed-form solution to the minimax program, we introduce two lemmas that are essential for proving that the solution satisfies the monotonicity constraint above. First, Lemma~\ref{lem:jn_sort} defines a quantity $V_n$, on which our closed-form solution $P_n^*$ depends, for each $n \in [N-1]$, and shows that there exists a non-decreasing sequence $\{j_n^*\}$, where each $j_n^*$ is an index that minimizes $V_n$.
+Before presenting a closed-form solution to the minimax program, we introduce two lemmas that are essential for proving that the solution satisfies the monotonicity constraint above. First, Lemma~\ref{lem:jn_sort} defines a quantity $V_n^*$, on which our closed-form solution $P_n^*$ depends, for each $n \in [N-1]$, and shows that there exists a non-decreasing sequence $\{j_n^*\}$, where each $j_n^*$ is an index that minimizes $V_n(j)$.
 
 \begin{lemma}\label{lem:jn_sort}
-Denote $[m]_0 := [m] \cup \{0\}$ and define the quantity $V_n$ for $n \in [N-1]$ as
+Denote $[m]_0 := [m] \cup \{0\}$ and define a function $V_n(j)$ and a quantity $V_n^*$ for $n \in [N-1]$ as
 \begin{align} \label{eq:Vn_def}
-V_n := \min_{j \in [m]_0} \left( \sum_{i=j+1}^{m} \sum_{s=1}^{n} \sum_{b=1}^B w_{ib}^s \indi{\theta_i < f_b^s(t)} + \sum_{i=1}^{j} \sum_{s=n+1}^{N}  \sum_{b=1}^b w_{ib}^s (1 - \indi{\theta_i < f_b^s(t)})\right) \geq 0
+V_n(j) := \sum_{i=j+1}^{m} \sum_{s=1}^{n} \sum_{b=1}^B w_{ib}^s \indi{\theta_i < f_b^s(t)} + \sum_{i=1}^{j} \sum_{s=n+1}^{N}  \sum_{b=1}^b w_{ib}^s (1 - \indi{\theta_i < f_b^s(t)}) \geq 0, % \nonumber\\
+\qquad V_n^* := \min_{j \in [m]} V_n(j).
 \end{align}
-and $V_0 = V_N := 0$.
-Let $J_n^*$ be the set of indices $j \in [m]_0$ that minimizes the $V_n$. 
+and $V_0^* = V_N^* := 0$.
+Let $J_n^*$ be the set of indices $j \in [m]_0$ that minimizes the $V_n(j)$. 
 \smallskip \\
 Then, there exists a sorted sequence $0=j_0^* \leq j_1^* \leq ... \leq j_{N-1}^* \leq j_N^* = m$ such that $j_n^* \in J_n^*$ for $n \in [N-1]$.
 \end{lemma}
 
 \begin{proof}
-Define $w_i^s := (w_{i1}^s, ..., w_{iB}^s) \in \R^B$, $\one_i^s = (\indi{\theta_i < f_1^s(t)}, ..., \indi{\theta_i < f_B^s(t)}) \in \R^B$, and $\one_B = (1, ..., 1) \in \R^B$. Then, $V_n$ can be rewritten as
+Define $w_i^s := (w_{i1}^s, ..., w_{iB}^s) \in \R^B$, $\one_i^s = (\indi{\theta_i < f_1^s(t)}, ..., \indi{\theta_i < f_B^s(t)}) \in \R^B$, and $\one_B = (1, ..., 1) \in \R^B$. Then, $V_n^*$ can be rewritten as
 \[
-V_n = \min_{j \in [m]_0} \left( \sum_{i=j+1}^{m} \sum_{s=1}^{n} w_i^s \cdot \one_i^s + \sum_{i=1}^{j} \sum_{s=n+1}^{N}  w_i^s \cdot (\one_B - \one_i^s) \right).
+V_n^* = \min_{j \in [m]_0} \left( \sum_{i=j+1}^{m} \sum_{s=1}^{n} w_i^s \cdot \one_i^s + \sum_{i=1}^{j} \sum_{s=n+1}^{N}  w_i^s \cdot (\one_B - \one_i^s) \right).
 \]
-Suppose there exists a pair of indices $n, n+1$ such that $j_n^* > j_{n+1}^*$. Using the definition of $V_n$, we have 
+Suppose there exists a pair of indices $n, n+1$ such that $j_n^* > j_{n+1}^*$. Using the definition of $V_n^*$, we have 
 \begin{align*}
 j_n^* &= \argmin_{j \in [m]_0} \left( \sum_{i=j+1}^{m} \sum_{s=1}^{n} w_i^s \cdot \one_i^s + \sum_{i=1}^{j} \sum_{s=n+2}^{N}  w_i^s \cdot (\one_B - \one_i^s) + \sum_{i=1}^{j} w_i^{n+1} \cdot (\one_B - \one_i^{n+1})\right) \\
 j_{n+1}^* &= \argmin_{j \in [m]_0} \left( \sum_{i=j+1}^{m} \sum_{s=1}^{n} w_i^s \cdot \one_i^s + \sum_{i=1}^{j} \sum_{s=n+2}^{N}  w_i^s \cdot (\one_F - \one_i^s) + \sum_{i=j+1}^{m} w_i^{n+1} \cdot \one_i^{n+1}\right).
@@ -136,7 +139,7 @@ D_j & := \sum_{i=1}^{j} w_i^{n+1} \cdot (\one_B - \one_i^{n+1}) \\
 E_j & := \sum_{i=j+1}^{m} w_i^{n+1} \cdot \one_i^{n+1}.
 \end{align*}
 Note that $D_j$ is non-decreasing in $j$ and $E_j$ is non-increasing in $j$.
-Since $j_n^*$ and $j_{n+1}^*$ are the indices that minimize the $V_n$ and $V_{n+1}$, respectively, we have $C_{j_n^*} + D_{j_n^*} \leq C_{j_{n+1}^*} + D_{j_{n+1}^*}$ and $C_{j_n^*} + E_{j_n^*} \geq C_{j_{n+1}^*} + E_{j_{n+1}^*}$. This implies that 
+Since $j_n^*$ and $j_{n+1}^*$ are the indices that minimize the $V_n(j)$ and $V_{n+1}(j)$, respectively, we have $C_{j_n^*} + D_{j_n^*} \leq C_{j_{n+1}^*} + D_{j_{n+1}^*}$ and $C_{j_n^*} + E_{j_n^*} \geq C_{j_{n+1}^*} + E_{j_{n+1}^*}$. This implies that 
 \[
 E_{j_{n+1}^*} - E_{j_n^*} \leq C_{j_n^*} - C_{j_{n+1}^*} \leq D_{j_{n+1}^*} - D_{j_n^*}.
 \]
@@ -144,7 +147,7 @@ Because of the monotonicity of $D_j$ and $E_j$ and the assumption that $j_n^* > 
 \[
 C_{j_n^*} - C_{j_{n+1}^*} = D_{j_n^*} - D_{j_{n+1}^*} = E_{j_n^*} - E_{j_{n+1}^*} = 0 \quad \Rightarrow j_{n+1}^* \in J_n^*, \,\, j_n^* \in J_{n+1}^*.
 \]
-By choosing $j_{n+1}^*$ as a minimizer of $V_n$ and $j_n^*$ as a minimizer of $V_{n+1}$, we resolve the unsorted pair of indices. Repeating this process yields a sorted sequence $0=j_0^* \leq j_1^* \leq ... \leq j_{N-1}^* \leq j_N^* = m$ and this proves the existence of sorted sequence.
+By choosing $j_{n+1}^*$ as a minimizer of $V_n(j)$ and $j_n^*$ as a minimizer of $V_{n+1}(j)$, we resolve the unsorted pair of indices. Repeating this process yields a sorted sequence $0=j_0^* \leq j_1^* \leq ... \leq j_{N-1}^* \leq j_N^* = m$ and this proves the existence of sorted sequence.
 \\
 Due to its existence, we can simply obtain a sorted sequence by choosing $j_n^* = \min J_n^*$ for all $n \in [N]$.
 \end{proof}
@@ -153,7 +156,7 @@ Due to its existence, we can simply obtain a sorted sequence by choosing $j_n^* 
 Next, Lemma~\ref{lem:Pn_def} constructs $P_n^*$ for $n \in [N]$ that satisfies the monotonicity constraint, regardless of whether the base forecasters' quantile predictions exhibit quantile crossing.
 
 \begin{lemma} \label{lem:Pn_def}
-Given a sorted sequence $0=j_0^* \leq j_1^* \leq ... \leq j_{N-1}^* \leq j_N^* = m$, there exists a distribution $P_n^*$ for $n \in [N]$ of the form
+Given a sorted sequence $0=j_0^* \leq j_1^* \leq ... \leq j_{N-1}^* \leq j_N^* = m$ from Lemma \ref{lem:jn_sort}, there exists a distribution $P_n^*$ for $n \in [N]$ of the form
 \begin{align}\label{eq:Pn_def}
 P_n^* = (1-C_n)\delta_{k_n / m} + C_n\delta_{(k_n+1)/m},
 \end{align}
@@ -162,19 +165,20 @@ such that the following properties hold:
   \item $j_{n-1}^* \leq k_n$
   \item $k_n < j_n^*$ if $j_{n-1}^* \neq j_n^*$ and $k_n = j_n^*$ with $C_n=0$ if $j_{n-1}^* = j_n^*$.
   \item The support of $P_n^*$ is contained in $[j_{n-1}^*/m, j_n^*/m]$.
-  \item $\E_{p_n \sim P_n^*} \left[ \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}^n \left( \indi{\theta_i < p_n} - \indi{\theta_i < f_b^n(t)} \right) \right] = V_{n-1}-V_n$.
+  \item $\E_{p_n \sim P_n^*} \left[ \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}^n \left( \indi{\theta_i < p_n} - \indi{\theta_i < f_b^n(t)} \right) \right] = V_{n-1}^*-V_n^*$.
 \end{enumerate}
 \end{lemma}
 \begin{proof}
-We use the notation $w_i^s$, $\one_i^s$, and $\one_B$ from the proof of Lemma~\ref{lem:jn_sort}. We define a function $V_n(\cdot)$ as following:
-\begin{align}\label{eq:Vn_j_def}
-V_n(j) = \sum_{i=j+1}^{m} \sum_{s=1}^{n} w_i^s \cdot \one_i^s + \sum_{i=1}^{j} \sum_{s=n+1}^{N}  w_i^s \cdot (\one_B - \one_i^s)  \quad \forall j \in [m]_0, n \in [N].
-\end{align}
-Note that the quantity $V_n$ defined in Lemma \ref{lem:jn_sort} is equal to $V_n(j_n^*)$ for all $n \in [N-1]$ and that $V_n(j) \geq V_n(j_n^*)$ for all $j \in [m]_0$.
+We use the notation $w_i^s$, $\one_i^s$, and $\one_B$ from the proof of Lemma~\ref{lem:jn_sort}. 
+% We define a function $V_n(\cdot)$ as following:
+% \begin{align}\label{eq:Vn_j_def}
+% V_n(j) = \sum_{i=j+1}^{m} \sum_{s=1}^{n} w_i^s \cdot \one_i^s + \sum_{i=1}^{j} \sum_{s=n+1}^{N}  w_i^s \cdot (\one_B - \one_i^s)  \quad \forall j \in [m]_0, n \in [N].
+% \end{align}
+Note that the quantity $V_n^*$ defined in Lemma \ref{lem:jn_sort} is equal to $V_n(j_n^*)$ for all $n \in [N-1]$ and that $V_n(j) \geq V_n(j_n^*)$ for all $j \in [m]_0$.
 \\
 Using the fact that $\indi{\theta_i < k/m} = \indi{i \leq k}$, the last property in the lemma statement is equivalent to 
 \begin{align*} 
-& V_{n-1} - V_n \\
+& V_{n-1}^* - V_n^* \\
 & = \E_{p_n \sim P_n^*} \left[ \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}^n \left( \indi{\theta_i < p_n} - \indi{\theta_i < f_b^n(t)} \right) \right] \nonumber\\
 & = (1-C_n) \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}^n \left( \indi{i \leq k_n} - \indi{\theta_i < f_b^n(t)} \right) + C_n \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}^n \left( \indi{i \leq k_n+1} - \indi{\theta_i < f_b^n(t)} \right) \nonumber\\
 & = (1-C_n) \sum_{i=1}^{m} w_{i}^n \cdot \left( \indi{i \leq k_n} \one_B - \one_i^n \right) + C_n \sum_{i=1}^{m} w_{i}^n \cdot \left( \indi{i \leq k_n+1} \one_B - \one_i^n \right) \nonumber\\
@@ -183,7 +187,7 @@ Using the fact that $\indi{\theta_i < k/m} = \indi{i \leq k}$, the last property
 The equality between the first and the last line is equivalent to
 \begin{align}
 \sum_{i=1}^{k_n} w_i^n \cdot \one_B + C_n w_{k_n}^n \cdot \one_B
-= \sum_{i=1}^{m} w_i^n \cdot \one_i^n + V_{n-1} - V_n 
+= \sum_{i=1}^{m} w_i^n \cdot \one_i^n + V_{n-1}^* - V_n^* 
 = \sum_{i=1}^{j_{n-1}^*} w_i^n \cdot \one_B + V_n(j_{n-1}^*) - V_n(j_n^*), \label{eq:Pn_eq}
 \end{align}
 where we used the identity $\sum_{i=1}^{m} w_i^n \cdot \one_i^n + V_{n-1}(j) = \sum_{i=1}^{j} w_i^n \cdot \one_B + V_n(j)$ evaluated at $j=j_{n-1}^*$.
@@ -195,20 +199,21 @@ Lastly, consider the case where $V_n(j_{n-1}^*) > V_n(j_n^*)$. We have
 \begin{align*}
   \sum_{i=1}^{j_{n-1}^*} w_i^n \cdot \one_F
   & < \sum_{i=1}^{j_{n-1}^*} w_i^n \cdot \one_F + V_n(j_{n-1}^*) - V_n(j_n^*) \\
-  & = \sum_{i=1}^{m} w_i^n \cdot \one_i^n V_{n-1} - V_n \\
+  & = \sum_{i=1}^{m} w_i^n \cdot \one_i^n + V_{n-1}^* - V_n^* \\
   & = \sum_{i=1}^{j_{n}^*} w_i^n \cdot \one_F + V_{n-1}(j_{n-1}^*) - V_{n-1}(j_n^*) 
   \leq \sum_{i=1}^{j_{n}^*} w_i^n \cdot \one_F,
 \end{align*}
 
 where two equalities used the identity $\sum_{i=1}^{m} w_i^n \cdot \one_i^n + V_{n-1}(j) = \sum_{i=1}^{j} w_i^n \cdot \one_B + V_n(j)$ evaluated at $j=j_n^*-1$ and $j=j_n^*$ respectively.
 This implies that there exists a $j_{n-1}^* \leq k_n < j_n^*$ such that 
-\begin{align*}
-  \sum_{i=1}^{k_n} w_i^n \cdot \one_B < \sum_{i=1}^{m} w_i^n \cdot \one_i^n - V_n + V_{n-1} \quad \text{and} \quad \sum_{i=1}^{k_n+1} w_i^n \cdot \one_B \geq \sum_{i=1}^{m} w_i^n \cdot \one_i^n - V_n + V_{n-1}.
-\end{align*}
-With such $k_n$, we define $P_n^*$ with $C_n = \frac{1}{w_{k_n}^n \cdot \one_F} \left( \sum_{i=1}^{m} w_i^n \cdot \one_i^n - V_n + V_{n-1} - \sum_{i=1}^{k_n} w_i^n \cdot \one_F \right)$ and this satisfies $\text{supp}(P_n^*) \in [j_{n-1}^*/m, j_n^*/m]$ since $k_n+1 \leq j_n^*$.
+\begin{align}\label{eq:Pn_kn_condition}
+  \sum_{i=1}^{k_n} w_i^n \cdot \one_B < \sum_{i=1}^{m} w_i^n \cdot \one_i^n - V_n^* + V_{n-1}^* \quad \text{and} \quad \sum_{i=1}^{k_n+1} w_i^n \cdot \one_B \geq \sum_{i=1}^{m} w_i^n \cdot \one_i^n - V_n^* + V_{n-1}^*.
+\end{align}
+With such $k_n$, we define $P_n^*$ with $C_n = \frac{1}{w_{k_n+1}^n \cdot \one_B} \left( \sum_{i=1}^{m} w_i^n \cdot \one_i^n - V_n^* + V_{n-1}^* - \sum_{i=1}^{k_n} w_i^n \cdot \one_B \right)$ and this satisfies $\text{supp}(P_n^*) \in [j_{n-1}^*/m, j_n^*/m]$ since $k_n+1 \leq j_n^*$.
 \end{proof}
 
 Lemma \ref{lem:Pn_def} implies two corollaries. One is that $\{P_n^*\}_{n=1}^N$ is stochastically ordered, and another is that $P_n^*$ is supported on the interval $[\min_{n,b} f_b^n(t), \max_{n,b} f_b^n(t)]$.
+
 \begin{corollary}\label{cor:P_n_monotone}
 For $P_n^*$, $n \in [N]$, there exists a coupling $(P_1^*,..., P_n^*)$ such that $P_1^* \leq P_2^* \leq ... \leq P_n^*$ almost surely.
 \end{corollary}
@@ -219,32 +224,52 @@ Combining the first three properties in the statement in Lemma \ref{lem:Pn_def},
 \end{proof}
 
 \begin{corollary}\label{cor:P_n_support}
-If $w > 0 FIXFIX$, $P_n^*$ is supported on the interval $[\min_{n \in [N], b \in [B]} f_b^n(t), \max_{n \in [N], b \in [B]} f_b^n(t)]$ for $n \in [N]$.
+Denote $\min_{n \in [N], b \in [B]} f_b^n(t) = m_1 /m$ and $\max_{n \in [N], b \in [B]} f_b^n(t) = m_2 /m$. If $\sum_{b=1}^B w_{m_1}^1 > 0$ and $\sum_{b=1}^B w_{m_2}^N > 0$, then $P_n^*$ is supported on the interval $[m_1 /m, m_2 /m]$ for $n \in [N]$.
 \end{corollary}
 \begin{proof}
-Since $P_n^*$ is supported on $[j_{n-1}^*/m, j_n^*/m]$, it suffices to prove that $j_1^*$ FIXFIX. 
-Let $\min_{n,b} f_b^n(t) = m_1 /m$ and $\max_{n,b} f_b^n(t) = m_2 /m$. Observe that, for $i \leq m_1$, $\theta_i < f_b^n(t)$ for all $b \in [B]$ and $n \in [N]$. This implies that $\one_i^s = \one_B$ for all $s \in [N]$ and $i \leq m_1$. Therefore, for $j \leq m_1$,
+Since $P_n^*$ is stochastically ordered, it suffices to prove that $P_1^* \leq m1 / m$ and $P_N^* \geq m_2 / m$ almost surely.
+First we prove that $P_1^* \geq m_1 / m$ almost surely. Observe that, for $i \leq m_1$, $\indi{\theta_i < f_b^n(t)} = 1$ for all $b \in [B]$ and $n \in [N]$. This implies that $\one_i^n = \one_B$ for all $n \in [N]$ and $i \leq m_1$. Therefore, for $j \leq m_1$,
 \[
 V_1(j) = \sum_{i=j+1}^m w_i^1 \cdot \one_i^1 + \sum_{i=1}^j \sum_{s=2}^N w_i^s \cdot (\one_B - \one_i^s) 
-= \sum_{i=j+1}^{m_1} w_i^1 \cdot \one_B + \sum_{i=m_1+1}^m w_i^1 \cdot \one_i^1
+= \sum_{i=j+1}^{m_1} w_i^1 \cdot \one_B + \sum_{i=m_1+1}^{m} w_i^1 \cdot \one_i^1
 \]
-holds and $V_1(j)$ is strictly decreasing in $j$ on $j \leq m_1$. 
+holds and $V_1(j)$ is non-increasing in $j$ on $j \leq m_1$. This implies that $V_1^* \leq V_1(m_1) = \sum_{i=m_1+1}^m w_i^1 \cdot \one_i^1$ and thus 
+\[
+\sum_{i=1}^{m_1} w_i^1 \cdot \one_B 
+= \sum_{i=1}^{m_1} w_i^1 \cdot \one_i^1 
+\leq \sum_{i=1}^m w_i^1 \cdot \one_i^1 - V_1^* + V_0^*, 
+\] 
+since $\one_i^s = \one_B$ for $i \leq m_1$ and $V_0^* = 0$. 
+In case the inequality is strict, $k_1$ that satisfies the condition \eqref{eq:Pn_kn_condition} should be at least $m_1$, which proves $P_1^* \geq m_1 / m$ almost surely. In case the equality holds, $k_1+1 = m_1$ since $w_{m_1}^1 \cdot \one_B = \sum_{b=1}^B w_{m_1}^1 > 0$ from the corollary condition. However, $C_1 = 1$ in this case and $P_1^* = \delta_{m_1 / m}$ which satisfies $P_1^* \geq m_1 / m$ almost surely.
+
+Next, we prove that $P_N^* \leq m_2 / m$ almost surely in a similar manner. For $i > m_2$, $\indi{\theta_i < f_b^n(t)} = 0$ for all $b \in [B]$ and $n \in [N]$. This implies that $\one_i^n = \one_B$ for all $n \in [N]$ and $i > m_2$. Therefore, for $j \geq m_2$,
+\[
+V_{N_1}(j) = \sum_{i=j+1}^m \sum_{s=1}^{N-1} w_i^s \cdot \one_i^s + \sum_{i=1}^j w_i^N \cdot (\one_B - \one_i^N) 
+= \sum_{i=1}^{m_2} w_i^N \cdot (\one_B - \one_i^N) + \sum_{i=m_2+1}^{m} w_i^N \cdot \one_B
+\]
+holds and $V_{N-1}(j)$ is non-decreasing in $j$ on $j \geq m_2$. This implies that $V_{N-1} \leq V_{N-1}(m_2) = \sum_{i=1}^{m_2} w_i^N \cdot (\one_B - \one_i^N)$ and thus 
+\[
+\sum_{i=1}^m w_i^N \cdot \one_i^N - V_{N}^* + V_{N-1}^* 
+\leq \sum_{i=1}^m w_i^N \cdot \one_i^N + \sum_{i=1}^{m_2} w_i^N \cdot (\one_B - \one_i^N) 
+= \sum_{i=1}^{m_2} w_i^N \cdot \one_B
+\]
+since $\one_i^N = \mathbf{0}$ for $i > m_2$ and $V_N^* = 0$. Because $w_{m_2}^N \cdot \one_B = \sum_{b=1}^B w_{m_2}^N > 0$ from the corollary condition, $k_n$ that satisfies the condition \eqref{eq:Pn_kn_condition} should satisfy $k_N < m_2$, which proves $P_N^* \leq m_2 / m$ almost surely.
 \end{proof}
 
 
 Now we prove that $P_n^*$ defined in Lemma \ref{lem:Pn_def} is a solution to the minimax program \eqref{eq:minimax_Pt_multi_q}.
 \begin{theorem}\label{thm:minimax_negative_multi_q}
-Given quantile levels $\tau_1 < \tau_2 < ... < \tau_N$ and quantile forecasts $\hat{f}_i^n$ for $i \in [m]$, $n \in [N]$, define $V_n$ $n \in [N-1]$ as in equation \eqref{eq:Vn_def}, with $V_0 = V_N := 0$. Due to Lemma \ref{lem:jn_sort}, there exists an increasing sequence $\{j_n^*\}_{n=1}^{N-1}$ where $j_n^*$ is an index that minimizes $V_n$. Define $j_0^* = 0$ and $j_N^* = m$.
+Given quantile levels $\tau_1 < \tau_2 < ... < \tau_N$ and quantile forecasts $\hat{f}_b^n(t)$ for $b \in [B]$, $n \in [N]$, define $V_n^*$ $n \in [N-1]$ as in equation \eqref{eq:Vn_def}, with $V_0^* = V_N^* := 0$. Due to Lemma \ref{lem:jn_sort}, there exists an increasing sequence $\{j_n^*\}_{n=1}^{N-1}$ where $j_n^*$ is an index that minimizes $V_n(j)$. Define $j_0^* = 0$ and $j_N^* = m$.
 \smallskip \\
 Then, $P_n^*$ for $n \in [N]$ given by \eqref{eq:Pn_def} with 
 \[
-P_y^* = \tau_1 \delta_0 + (1-\tau_N)\delta_1 + \sum_{n=1}^{N-1}(\tau_{n+1}-\tau_n)\delta_{j_t^*/m}
+P_y^* = \tau_1 \delta_0 + (1-\tau_N)\delta_1 + \sum_{n=1}^{N-1}(\tau_{n+1}-\tau_n)\delta_{j_n^*/m}
 \]
 is a solution of the minimax program \eqref{eq:minimax_Pt_multi_q} and the value of the minimax program is 
 \[
--\sum_{n=1}^{N-1}(\tau_{n+1}-\tau_n)V_n \leq 0.
+-\sum_{n=1}^{N-1}(\tau_{n+1}-\tau_n)V_n^* \leq 0.
 \]
-
+\end{theorem}
 % Then, the value of the minimax program is $-\sum_{t=1}^{N-1}(\tau_{t+1}-\tau_t)V_t \leq 0$ and the solution is given by 
 % \begin{align*}
 %   P_y^* &= \tau_1 \delta_0 + (1-\tau_N)\delta_1 + \sum_{t=1}^{N-1}(\tau_{t+1}-\tau_t)\delta_{j_t^*/m} \\
@@ -259,7 +284,7 @@ is a solution of the minimax program \eqref{eq:minimax_Pt_multi_q} and the value
 % for $t \in [N]$ with $V_0 = V_N := 0$.
 
 % Moreover, for any $j_t^*$ that achieves the minimum in \eqref{eq:Vt_def}, it holds that $\underline{k_t^*} < j_t^* \leq \overline{k_{t+1}^*}$, \sout{which implies that $P_t^*$ is stochastically smaller than $P_{t+1}^*$}. {\color{red} I'm confident that $\underline{k_t^*} \leq \underline{k_{t+1}^*}$ also holds, so that $\underline{k_t^*}$ doesn't have crossing issue.}
-\end{theorem}
+
 \begin{proof}
 Denote the minimax objective function by 
 \[O(\{P_n\}_{n=1}^N, P_y) = \sum_{n=1}^N \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}^n \E_{p_n \sim P_n, Y \sim P_y}[S_{n, i}(p_n,Y) - S_{n,i}(f_b^n(t),Y)].
@@ -283,7 +308,7 @@ Plugging in $P_n^*$ given as \eqref{eq:Pn_def}, the summand can be expressed as
 \begin{align*}
 A_j^n := \E_{p_n \sim P_n^*} & \left[\sum_{i=j+1}^{m} w_i^n \cdot \left( \indi{\theta_i < p_n} \one_F - \one_i^n\right)\right] 
 = \begin{cases}
--\sum_{i=1}^{j} w_i^n \cdot (\one_B-\one_i^n) - V_n + V_{n-1} & \quad j \leq k_n^* \\
+-\sum_{i=1}^{j} w_i^n \cdot (\one_B-\one_i^n) - V_n^* + V_{n-1}^* & \quad j \leq k_n^* \\
 - \sum_{i=j+1}^{m} w_i^n \cdot \one_i^n & \quad j > k_n^* \\
 \end{cases} 
 \end{align*}
@@ -292,18 +317,18 @@ This leads to
 \begin{align*}
 A_j & := \sum_{n=1}^N A_j^n \\
 &= \begin{cases}
--\sum_{n=1}^N \sum_{i=1}^{j} w_i^n \cdot (\one_B - \one_i^n) + V_0 & \quad j \leq k_1 \\
--\sum_{s=1}^n \sum_{i=j+1}^{m} w_i^s \cdot \one_i^s - \sum_{s=n+1}^{N} \sum_{i=1}^{j} w_i^s \cdot (\one_B-\one_i^s) + V_n & \quad  j \in (k_n, k_{n+1}], \,\, n \in [N-1] \\
--\sum_{n=1}^N \sum_{i=j+1}^{m} w_i^n \cdot \one_i^n + V_N & \quad j > k_N
+-\sum_{n=1}^N \sum_{i=1}^{j} w_i^n \cdot (\one_B - \one_i^n) + V_0^* & \quad j \leq k_1 \\
+-\sum_{s=1}^n \sum_{i=j+1}^{m} w_i^s \cdot \one_i^s - \sum_{s=n+1}^{N} \sum_{i=1}^{j} w_i^s \cdot (\one_B-\one_i^s) + V_n^* & \quad  j \in (k_n, k_{n+1}], \,\, n \in [N-1] \\
+-\sum_{n=1}^N \sum_{i=j+1}^{m} w_i^n \cdot \one_i^n + V_N^* & \quad j > k_N
 \end{cases}
 \end{align*}
-Notice that $A_j$ is non-increasing on $j \leq k_1$ and non-decreasing on $j > k_N$. $A_0 = 0$ and $A_m = 0$ is the maximum value of $A_j$ in these ranges, respectively. Next, observe that $A_j \leq 0$ for all $j=0,1,...,m$ since $V_n$ is the minimum value that $\sum_{s=1}^n \sum_{i=j+1}^{m} w_i^s \cdot \one_i^s + \sum_{s=n+1}^{N} \sum_{i=1}^{j} w_i^s \cdot (\one_B-\one_i^s)$ can achieve by its definition. It suffices to show that $A_{j_n^*} = 0$ for $n \in [N-1]$ since $P_y^*$ only puts mass on these points. Note that $A_{j_0} = A_0 = 0$ and $A_{j_N} = A_m = 0$.
+Notice that $A_j$ is non-increasing on $j \leq k_1$ and non-decreasing on $j > k_N$. $A_0 = 0$ and $A_m = 0$ is the maximum value of $A_j$ in these ranges, respectively. Next, observe that $A_j \leq 0$ for all $j=0,1,...,m$ since $V_n^*$ is the minimum value that $\sum_{s=1}^n \sum_{i=j+1}^{m} w_i^s \cdot \one_i^s + \sum_{s=n+1}^{N} \sum_{i=1}^{j} w_i^s \cdot (\one_B-\one_i^s)$ can achieve by its definition. It suffices to show that $A_{j_n^*} = 0$ for $n \in [N-1]$ since $P_y^*$ only puts mass on these points. Note that $A_{j_0} = A_0 = 0$ and $A_{j_N} = A_m = 0$.
 
 From the first and second properties in the statement of Lemma \ref{lem:Pn_def}, we have $k_n < j_n^* \leq k_{n+1}$ if $j_{n-1}^* \neq j_n^*$ and $j_{n-1}^* = j_n^*= k_n$ if $j_{\nu-1}^* = j_\nu^*$, for $n \in [N-1]$. In the former case, we obtain $A_{j_n^*} = 0$ from $j \in (k_n, k_{n+1}]$ case in the definition of $A_j$ above. In the latter case, $j_n^* = k_n$ does not fall into the range $(k_n, k_{n+1}]$. Still, from $j \in (k_{n-1}, k_{n}]$ case ($j \leq k_1$ case if $n=1$) in the definition of $A_j$ , we have
 \begin{align*}
 A_{j_n^*} 
-& = -\sum_{s=1}^{n-1} \sum_{i=j+1}^{m} w_i^s \cdot \one_i^s - \sum_{s=n}^{N} \sum_{i=1}^{j} w_i^s \cdot (\one_B - \one_i^s) + V_{n-1} \\
-& =  - V_{n-1}(j_n^*) + V_{n-1} = -V_{n-1}(j_{n-1}^*) + V_{n-1} = 0,
+& = -\sum_{s=1}^{n-1} \sum_{i=j+1}^{m} w_i^s \cdot \one_i^s - \sum_{s=n}^{N} \sum_{i=1}^{j} w_i^s \cdot (\one_B - \one_i^s) + V_{n-1}^* \\
+& =  - V_{n-1}(j_n^*) + V_{n-1}^* = -V_{n-1}(j_{n-1}^*) + V_{n-1}^* = 0,
 \end{align*}
 where $V_n(j)$ is defined as equation \eqref{eq:Vn_j_def}. Therefore, $A_{j_n^*} = 0$ for all $n \in [N-1]$ and $O(\{P_n^*\}_{n=1}^N, P_y^*) = \max_{P_y} O(\{P_n^*\}_{n=1}^N, P_y)$. \smallskip
 
@@ -317,7 +342,7 @@ Since $P_Y^*$ only puts mass on points $j/m$ such that $A_j = 0$, plugging in $P
 \begin{align*}
 O(\{P_n^*\}_{n=1}^N, P_y^*) 
 &= \sum_{n=1}^N C(P_n^*) = -\sum_{n=1}^N \tau_n \E_{p_n \sim P_n^*} \sum_{i=1}^{m} w_i^n \cdot (\indi{\theta_i < p_n}\one_F - \one_i^n) \\
-&  = -\sum_{n=1}^N \tau_n (V_{n-1} - V_n) = -\sum_{n=1}^{N-1}(\tau_{n+1}-\tau_n)V_n \leq 0,
+&  = -\sum_{n=1}^N \tau_n (V_{n-1}^* - V_n^*) = -\sum_{n=1}^{N-1}(\tau_{n+1}-\tau_n)V_n^* \leq 0,
 \end{align*}
 where the second from the last equality used the fourth property in Lemma \ref{lem:Pn_def}.
 \end{proof}
@@ -329,10 +354,13 @@ Putting all these together, we now present an upper bound for the omniprediction
   \label{thm:omni-twoplayer_online_multi_q}
   For a set of quantile levels $\tau_1 < \tau_2 < ... < \tau_N$, let $\cs$ denote the class of scoring functions with representation \eqref{eq:multi_q_consistent_loss} with positive measures $\{H_{\tau_n}\}_{n=1}^N$ such that $H_{\tau_n}(\R) \leq 1, \forall n \in [N]$ (the set of \textit{all} scoring functions that are consistent for the multiple quantile levels under mild regularity conditions). Consider a base forecasters $\{f_b\}_{b=1}^B$ that provides $\{\tau_n\}_{n=1}^N$-level quantile forecasts $\{f_b^n(t)\}_{n=1}^N$ at each time $t \in [T]$. With the target values $Y_t$, forecaster predictions $f_b^n(t)$ for $t \in [T], n \in [N], b \in [B]$ each taking values in a uniform grid of size $m$, and the learning rate $\eta = \sqrt{\frac{\log (mNB)}{T}}$, the output $\hat{P}_t = \{\hat{P}_t^n\}_{n=1}^N$ from Algorithm \ref{alg:omni-twoplayer_online_multi_q} achieves the following omniprediction error:
   \begin{align*}
-  \sup_{S \in \cs,\, b \in [B]} \frac{1}{T} \sum_{n=1}^N \sum_{t=1}^T \E_{p_n \sim \hat{P}_t^n} [S(p_n, Y_t)] - \E[S(f_b^n(t), Y_t)]
+  \sup_{S \in \cs,\, b \in [B]} \frac{1}{T} \sum_{n=1}^N \sum_{t=1}^T \E_{p_n \sim \hat{P}_n(t)} [S(p_n, Y_t)] - \E[S(f_b^n(t), Y_t)]
   \leq 2 \left(\sqrt{\frac{\log mNB}{T}}\right)
   \end{align*}
 \end{theorem}
+\begin{proof}
+  This follows as a straightforward extension of Theorem \ref{thm:omni-twoplayer_online_q}, using the fact that the value of the minimax program is negative, as established in Theorem \ref{thm:minimax_negative_multi_q}.
+\end{proof}
 
 
 
