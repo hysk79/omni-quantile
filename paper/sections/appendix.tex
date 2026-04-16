@@ -1,25 +1,302 @@
-\section{Different versions of omniprediction algorithm} \label{sec:diff_omni_algos}
-\subsection{General base forecasters class $\cf$ with pre-computed best competitor}
-We can modify Algorithm \ref{alg:omni-twoplayer_online_q} to a version that accommodates more general $\cf$, which now takes the best competitor for each elementary score $S_{\alpha, i}$ as input instead of discovering it inside the algorithm.
+\section{Different versions of omniprediction algorithm} \label{appsec:diff_omni_algos}
+\subsection{General base forecasters class with pre-computed best competitor}
+We can modify Algorithm \ref{alg:omni-twoplayer_online_q} to a version that accommodates more general $\cf$, which now takes the best competitor for each elementary score $S_{\alpha, i}$, which can be computed in advance using a hold-out set, as input instead of discovering it inside the algorithm.
 
-\begin{algorithm}
-    \caption{Single quantile level omniprediction with pre-computed best competitor for each elementary score} 
-    \begin{algorithmic}[1]
-    \State \textbf{Data:} Data stream $\{Y_t\}_{t=1}^T$, Grid size $m \in \mathbb{N}$, Learning rate $\eta > 0$, Best competitor for $S_{\alpha, i}$: $\hat{f}_i, i \in \{0, \ldots, m-1\}$.
-    \State For $t=1$,$w_{i}(t) = \frac{1}{m}$, for all $i \in \{0, \ldots, m-1\}$;
+\begin{algorithm}[h]
+  \caption{Single quantile level omniprediction with pre-computed best competitor for each elementary score} 
+  \begin{algorithmic}[1]
+  \State \textbf{Data:} Data stream $\{Y_t\}_{t=1}^T$, Grid size $m \in \mathbb{N}$, Learning rate $\eta > 0$, Best competitor for each elementary score $S_{\alpha, i}$: $\hat{f}_i, i \in [m]$.
+  \State \textbf{Initialize:} $w_{i}(1) = \frac{1}{m}$, for all $i \in [m]$;
+
+  \For{$t = 1, \ldots, T$}
+    \State \textbf{1) Make prediction at time $t$}:
+    \State $B_k := \sum_{i=1}^{k} w_{i}(t) - \sum_{i=1}^{m} w_{i}(t) \one(\theta_i < \hat{f}_i(t))$, $\quad k^* = \max\{k: B_k \leq 0\}$
+      \State \textbf{Output}
+      \makebox[0pt][l]{$\displaystyle
+          \hat{P}_t = \frac{B_{k^*+1}}{B_{k^*+1} + |B_{k^*}|}\delta_{\frac{k^*}{m}} +
+          \frac{|B_{k^*}|}{B_{k^*+1} + |B_{k^*}|}\delta_{\frac{k^*+1}{m}}$
+      } \vspace{-0.1cm}\\
+      \State \textbf{2) Update the weights for each $S_{\theta_i}$ and $f_r$}:
+          \State $w_{i}(t+1) = \frac{w_{i}(t) \exp\bigl(\eta \big(\mathbb{E}_{p \sim \hat{P}_t}[S_{\alpha, i}(p, Y_t)] 
+          - S_{\alpha, i}(\hat{f}_i(t), Y_t)\big)\bigr)}{\sum_{i=1}^m w_{i}(t) \exp\bigl(\eta \big(\mathbb{E}_{p \sim \hat{P}_t}[S_{\alpha, i}(p, Y_t)] 
+          - S_{\alpha, i}(\hat{f}_i(t), Y_t)\big)\bigr)}, \quad \forall i \in [m];$ \vspace{-0.1cm}\\
+  \EndFor
+  \end{algorithmic}
+\end{algorithm}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% NEW SECTION
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Efficient computation of minimax solution}
+\subsection{Multiple quantile level omniprediction} \label{appsubsec:multi_q_fast}
+This subsection introduces Algorithm \ref{alg:compute_vn}, an efficient subroutine to compute $V_n^*$ and $j_n^*$ for each $n \in [N-1]$ in $O(mNB)$ time. Recall the definition of $V_n^*$ from Section \ref{sec:multi_q}:
+\[
+  V_n^* := \min_{j \in [m]_0} \left( \sum_{i=j+1}^{m} \sum_{s=1}^{n} \sum_{b=1}^B w_{ib}^s \indi{\theta_i < f_b^s(t)} + \sum_{i=1}^{j} \sum_{s=n+1}^{N}  \sum_{b=1}^B w_{ib}^s (1 - \indi{\theta_i < f_b^s(t)})\right)
+\]
+
+\begin{algorithm}[h]
+  \caption{Efficient computation of $V_n$ and its minimizer $j_n^*$} \label{alg:compute_vn}
+  \begin{algorithmic}[1]
+  \State \textbf{Input:} Weights $\{w_{ib}^s\}_{s \in [N],\, i \in [m],\, b \in [B]}$, indicators $\{\indi{\theta_i < f_b^s(t)}\}_{s \in [N],\, i \in [m],\, b \in [B]}$
+  \State \textbf{Output:} Values $\{V_n\}_{n=1}^{N-1}$ and minimizers $\{j_n^*\}_{n=1}^{N-1}$
   
-    \For{$t = 1, \ldots, T$}
-      \State \textbf{1) Make prediction at time $t$}:
-      \State $B_k := \sum_{i=0}^{k-1} w_{i}(t) - \sum_{i=0}^{m-1} w_{i}(t) \one(\theta_i < \hat{f}_i(t))$, $\quad k^* = \max\{k: B_k \leq 0\}$
-        \State \textbf{Output}
-        \makebox[0pt][l]{$\displaystyle
-            \hat{P}_t = \frac{B_{k^*+1}}{B_{k^*+1} + |B_{k^*}|}\delta_{\frac{k^*}{m}} +
-            \frac{|B_{k^*}|}{B_{k^*+1} + |B_{k^*}|}\delta_{\frac{k^*+1}{m}}$
-        } \vspace{-0.1cm}\\
-        \State \textbf{2) Update the weights for each $S_{\theta_i}$ and $f_r$}:
-            \State $w_{i}(t+1) = \frac{w_{i}(t) \exp\bigl(\eta \big(\mathbb{E}_{p \sim \hat{P}_t}[S_{\alpha, i}(p, Y_t)] 
-            - S_{\alpha, i}(\hat{f}_i(t), Y_t)\big)\bigr)}{\sum_{i} w_{i}(t) \exp\bigl(\eta \big(\mathbb{E}_{p \sim \hat{P}_t}[S_{\alpha, i}(p, Y_t)] 
-            - S_{\alpha, i}(\hat{f}_i(t), Y_t)\big)\bigr)}, \quad \forall i \in \{0, \ldots, m-1\};$ \vspace{-0.1cm}\\
-    \EndFor
-    \end{algorithmic}
-  \end{algorithm}
+  \State \textbf{1) Compute aggregated weights and indicators:}
+  \[
+  w_i^s = \sum_{b=1}^B w_{ib}^s,
+  \qquad
+  I_i^s = \sum_{b=1}^B w_{ib}^s \indi{\theta_i < f_b^s(t)}, \qquad \forall i \in [m], s \in [N].
+  \]
+  
+  \State \textbf{2) Compute cumulative sums:}
+  \begin{align*}
+    \text{FrontSum}[n, i]= \sum_{s=1}^{n} I_i^s, \qquad
+    \text{BackSum}[n, i] = \sum_{s=n+1}^{N} (w_i^s - I_i^s), \qquad \forall i \in [m], n \in [N-1].
+  \end{align*}
+  
+  \State \textbf{3) Find $j_n^*$ for each $n \in [N-1]$:}
+  \State Define $j_0^* = 0$. Initialize $\mathrm{cost}[j] = 0, \forall j \in [m]_0$.
+  \For{$n = 1,\dots,N-1$}
+      \State Compute the cost at $j=j_{n-1}^*$:
+      \[
+      \mathrm{cost}[j_{n-1}^*] = \sum_{i=j_{n-1}^*+1}^m \text{FrontSum}[n,i]
+      \;+\;
+      \sum_{i=1}^{j_{n-1}^*} \text{BackSum}[n,i], \qquad
+      V_n \gets \mathrm{cost}[j_{n-1}^*]
+      \]
+      \For{$j = j_{n-1}^*\!+\!1, \dots, m$}
+          \State $\mathrm{cost}[j] = \mathrm{cost}[j\!-\!1] - \text{FrontSum}[n, j\!-\!1] + \text{BackSum}[n, j\!-\!1]$
+          \State $V_n \gets \min(V_n, \, \mathrm{cost}[j])$
+      \EndFor
+      \State $j_n^* = \argmin_{j_{n-1}^* \leq j \leq m} \mathrm{cost}[j]$
+  \EndFor
+  
+  \State \textbf{Return:} $\{V_n\}_{n=1}^{N-1}$ and $\{j_n^*\}_{n=1}^{N-1}$
+  \end{algorithmic}
+\end{algorithm}
+
+
+
+\subsection{Omniprediction for weighted quantile losses} \label{appsubsec:wql_fast}
+This subsection introduces Algorithm \ref{alg:compute_theta_n_wql} that computes $\{\theta_n^*\}_{n=0}^N$ in $O(K\log(K))$ time, where $K$ is number of unique values in $\{f_b^n(t)\}_{b,n}$. With this algorithm, now the computational bottleneck lies in computing $V_n^* = V_n(\theta_n^*)$ for each $n \in [N-1]$, which takes $O(N^2B)$ in total. To reduce the time complexity even further, we introduce Algorithm \ref{alg:compute_vn_diff_wql} that computes $V_{n-1}^* - V_n^*$ for all $n \in [N-1]$, which is all we need to to compute the minimax solution $\hat{p}^G_n(t)$ (See Proposition \ref{prop:pn_def_wql}), in $O(NB)$ time. \smallskip
+
+We begin with introducing an efficient algorithm to compute $\{\theta_n^*\}_{n=0}^N$ in $O(K\log(K))$ time. Recall the definition of $V_n^*$ in Section \ref{sec:multi_wql}:
+\[
+V_n(\theta) := \sum_{s=1}^{n} \sum_{b=1}^B w_b^s \max(f_b^s(t)-\theta, 0) + \sum_{s=n+1}^{N}\sum_{b=1}^B  w_b^s \max(\theta - f_b^s(t), 0), 
+\qquad V_n^* := \min_{\theta \in \R} V_n(\theta).
+\]
+The key point in efficiently computing $V_n^*$ is that $V_n(\theta)$ is a sum of piecewise linear functions (hinge functions) in $\theta$. This implies that the minimizer $\theta_n^*$ is the point where the slope of $V_n(\theta)$ changes from negative to positive. Another key observation is that the slope of $V_n(\theta)$ only changes at $\{f_b^s(t)\}_{b,s}$ and it increases by $w_b^s$. More precisely, the change of slope at $f_b^s(t)$ is $\sum_{\{(x,z): f_x^z(t) = f_b^s(t)\}} w_x^z$. It is important to note that the amount of change at each $f_b^s(t)$ is same for all $V_n(\theta)$, $n \in [N-1]$.
+
+Then, we observe that the slope of $V_n(\theta)$ at $\theta < \min_{b,n} f_b^n(t)$ is $- \sum_{s=1}^{n} \sum_{b=1}^B w_b^s$. This implies that finding $\theta_n^*$ reduces to find the smallest $f_b^s(t)$ such that cumulative slope increase is larger than or equal to $\sum_{s=1}^{n} \sum_{b=1}^B w_b^s$. Formally, $\theta_n^*$ equals to the smallest $f_b^s(t)$ such that $\sum_{\{(x,z): f_x^z(t) \leq f_b^s(t)\}} w_x^z \geq \sum_{s=1}^{n} \sum_{b=1}^B w_b^s$.
+
+\begin{algorithm}[h]
+  \caption{Efficient computation of $\{\theta_n^*\}_{n=0}^N$}
+  \label{alg:compute_theta_n_wql}
+  \begin{algorithmic}[1]
+  \State \textbf{Input:} Weights $\{w_b^n\}_{n \in [N],\, b \in [B]}$, forecasts $\{f_b^n(t)\}_{n \in [N],\, b \in [B]}$
+
+  \State \textbf{1) Compute cumulative row sums:}
+  \State $W[n] = \sum_{s=1}^{n} \sum_{b=1}^B w_b^s, \quad n \in [N]$.
+
+  \State \textbf{2) Compute the slope increases at each $f_b^s(t)$:}
+  \State Flatten $\{(w_b^n, f_b^n(t))\}_{b,n}$ into pairs $\{(\tilde{w}_k,\tilde{f}_k)\}_{k=1}^{NB}$ and sort them by $\tilde{f}_k$ in nondecreasing order.
+  \State Group equal forecast values and let the distinct sorted values be $\{g_k\}_{k=1}^K$ with $g_1 < g_2 < \cdots < g_K$.
+  \State For each $k \in [K]$, compute the sum of corresponding weights: $v_k = \sum_{\{(b,n): f_b^n(t) = g_k\}} w_b^n$.
+  \State Compute the cumulative sum of $v_k$: $Vcum[k] = \sum_{\ell=1}^{k} v_\ell$.
+  
+  \State \textbf{3) Find $\theta_n^*$ for each $n \in [N-1]$:}
+  \For{$n = 1, \ldots, N-1$}
+    \State Binary search on $Vcum$ (sorted since $v_k > 0$) to find smallest $k_n^*$ such that $Vcum[k_n^*] \geq W[n]$.
+    \State $\theta_n^* \gets g_{k_n^*}$.
+  \EndFor
+  \end{algorithmic}
+\end{algorithm}
+
+\smallskip
+Next, we introduce an algorithm that computes $V_{n-1}^* - V_n^*$ for all $n \in [N-1]$ in $O(NB)$ time. Note that naive computation of $V_n^*$ using $\theta_n*$ takes $O(NB)$ time and thus $O(N^2B)$ in total. Before introducing the algorithm, we observe what $V_{n-1}^* - V_n^*$ is.
+\begin{align*} % 2339
+V_{n-1}(\theta_{n-1}^*) - V_n(\theta_n^*) 
+& = \sum_{s=1}^{n-1} \sum_{b=1}^B w_b^s \left(\max(f_b^s(t)-\theta_{n-1}^*, 0) - \max(f_b^s(t)-\theta_n^*, 0)\right) \\
+& \quad + \sum_{s=n+1}^{N}\sum_{b=1}^B  w_b^s \left(\max(\theta_{n-1}^* - f_b^s(t), 0) - \max(\theta_n^* - f_b^s(t), 0)\right) \\
+& \quad + \sum_{b=1}^B w_b^n \left( \max(\theta_{n-1}^* - f_b^n(t), 0) - \max(f_b^n(t) - \theta_n^*, 0)\right)
+\end{align*}
+Each component results in different values depending on whether $f_b^n(t) < \theta_{n-1}^*$ or $\theta_{n-1}^* \leq f_b^n(t) < \theta_n^*$ or $\theta_n^* \leq f_b^n(t)$. Fortunately, some calculations on the quantity above (divide cases etc.) gives the following simple formula:
+\begin{align*}
+& V_{n-1}(\theta_{n-1}^*) - V_n(\theta_n^*) \\
+& = \sum_{s=1}^N \sum_{b=1}^B w_b^n 
+\bigl( \theta_{n-1}^* \, \indi{f_b^s(t) < \theta_{n-1}^*}  
++ f_b^s(t) \,\indi{\theta_{n-1}^* \leq f_b^s(t) < \theta_n^*}  
++ \theta_n^*  \, \indi{\theta_n^* \leq f_b^s(t)} \bigr)  \\
+& \quad - \theta_{n-1}^*\left(\sum_{s=1}^{n-1} \sum_{b=1}^B w_b^s\right) - \theta_n^* \left(\sum_{s=n+1}^{N}\sum_{b=1}^B w_b^s\right) - \sum_{b=1}^B w_b^n f_b^n(t).
+\end{align*}
+Observe that most quantities can be precomputed in $O(NB)$ time. Algorithm \ref{alg:compute_vn_diff_wql} shows the details.
+
+\begin{algorithm}[h]
+  \caption{Efficient computation of $V_{n-1}^* - V_n^*$ for all $n \in [N-1]$}
+  \label{alg:compute_vn_diff_wql}
+  \begin{algorithmic}[1]
+  \State \textbf{Input:} Weights $\{w_b^n\}_{b,n}$, forecasts $\{f_b^n(t)\}_{b,n}$, $\{g_k\}_{k=1}^K$, $\{\theta_n^* = g_{k_n^*}\}_{n=0}^N$ from Algorithm \ref{alg:compute_theta_n_wql}
+  \State \textbf{1) Compute cumulative row sums:}
+  \State Define $W[n] = \sum_{s=1}^{n} \sum_{b=1}^B w_b^s, \quad n \in [N]$, $W[0] = 0$.
+  \State Define $WB[n] = \sum_{s=n+1}^N \sum_{b=1}^B w_b^s, \quad n \in [N-1]$, $WB[N] = 0$. \smallskip
+  \State Define $V[k] = \sum_{\{(b,n): f_b^n(t) = g_k\}} w_b^n, \quad k \in [K]$.
+  \State Define $VF[k] = \sum_{\{(b,n): f_b^n(t) = g_k\}} w_b^n * f_b^n(t), \quad k \in [K]$.
+  \State Define $Vcum[k] = \sum_{\ell=1}^{k} V[k], \quad k \in [K]$, $Vcum[0] = 0$.
+  \State Define $VFcum[k] = \sum_{\ell=1}^{k} VF[k], \quad k \in [K]$, $VFcum[0] = 0$. \smallskip
+
+  \State \textbf{2) Compute $V_{n-1}^* - V_n^*$ for each $n \in [N-1]$:}
+  \For{$n = 1, \ldots, N-1$}
+    \begin{align*}
+      V_{n-1}^* - V_n^* 
+      & = \theta_{n-1}^* (Vcum[\max(k_{n-1}^*,0)]) + (VFcum[k_n^*-1] - VFcum[\max(k_{n-1}^*,0)]) \\
+      & \quad + \theta_n^* (1- Vcum[k_n^*-1]) - \theta_{n-1}^* (W[n-1]) - \theta_n^* (WB[n]) - \sum_{b=1}^B w_b^n f_b^n(t).  
+    \end{align*}
+    
+  \EndFor
+  \State \textbf{Output:} $\{V_{n-1}^* - V_n^*\}_{n=1}^{N-1}$
+  \end{algorithmic}
+\end{algorithm}
+
+
+
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% NEW SECTION
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{The effect of post-sorting on loss functions} \label{appsec:post_sorting}
+
+\cite{fakoor2023flexible} showed that post-sorting never increases the loss for \textbf{unweighted} sums of pinball losses at different quantile levels. Unfortunately, the same does not hold for \textbf{weighted} sums of pinball losses. We present two results in this section. First, for a class of weighted sums of pinball losses at two quantile levels, we fully characterize the conditions under which post-sorting always decreases the loss. Conversely, when these conditions fail, there exists an instance $(Y, x_1, x_2)$ for which post-sorting increases the loss. Second, we present a class of loss functions where post-sorting does not increase the loss.
+
+% \[
+% \ell(x_1, x_2) := \E_Y [w_\alpha \rho_\alpha (Y-x_1) + w_\beta \rho_\beta (Y-x_2)].
+% \] 
+% Consider the case $\alpha < \beta$. We would like $\ell(x_1, x_2) - \ell(x_2, x_1) \geq 0$ for $x_1 > x_2$. 
+% \paragraph{Counterexample} Let $Y \sim \text{Ber}(1/2)$ and $0 < x_2 < x_1 < 1$. Then, 
+% \begin{align*}
+% \ell(x_1, x_2) - \ell(x_2, x_1) 
+% & = w_\alpha \E_Y \left[(\alpha - \indi{Y < x_1})(Y-x_1) - (\alpha - \indi{Y < x_2})(Y-x_2)\right] + \\ 
+% & \qquad w_\beta \E_Y \left[(\beta - \indi{Y < x_2})(Y-x_2) - (\beta - \indi{Y < x_1})(Y-x_1) \right] \\
+% & = w_\alpha (\alpha - 1/2)(x_2 - x_1) + w_\beta (\beta - 1/2)(x_1 - x_2) \\
+% & = (x_1 - x_2)(w_\beta (\beta - 1/2) - w_\alpha (\alpha - 1/2))
+% \end{align*}
+% Note that the second equality uses the fact that $\indi{Y < x_1} = \indi{Y < x_2}$. When $\alpha$ and $\beta$ lie on the same side of $1/2$, there exist $(w_\alpha, w_\beta)$ for which the improvement in loss becomes negative.
+% Conversely, if $(w_\alpha, w_\beta)$ does not satisfy any of the above conditions, then there exists $(Y, x_1, x_2)$ such that post-sorting increases the loss.
+
+% \smallskip
+% If we solve the minimax program \textbf{separately for each quantile level}, quantile crossing may occur (or maybe NOT due to the structure of $f(X)$ that it is a valid probability forecast and thus no quantile crossing occurs). Unfortuately, the following proposition shows that post-sorting does not always reduce loss for \textbf{unequally} weighted sums of pinball losses.
+
+Define the pinball loss at quantile level $\tau$ as $\rho_\tau(x) := \tau x\indi{x \geq 0} +(1-\tau)|x|\indi{x < 0} = (\tau - \indi{x < 0})x$.
+\begin{prop}
+For $(\alpha, \beta) \in (0, 1)^2$ with $\alpha < \beta$, define a weighted quantile loss as
+\[
+\ell(x_1, x_2) := \E_Y [w_\alpha \rho_\alpha (Y-x_1) + w_\beta \rho_\beta (Y-x_2)].
+\]
+If $(w_\alpha, w_\beta)$ satisfies one of the following conditions, then post-sorting does not increase the loss:
+\begin{enumerate}
+  \item $w_\alpha = w_\beta$
+  \item $w_\alpha < w_\beta$ and $(1-\alpha)w_\alpha \geq (1-\beta)w_\beta$
+  \item $w_\alpha > w_\beta$ and $\beta w_\beta \geq \alpha w_\alpha$.
+\end{enumerate}
+Conversely, if $(w_\alpha, w_\beta)$ does not satisfy any of the above conditions, then there exists $(Y, x_1, x_2)$ such that post-sorting increases the loss.
+\end{prop}
+
+\begin{proof}
+Choose any $x_1 > x_2$. The loss before post-sorting is $\ell(x_1, x_2)$ and the loss after post-sorting is $\ell(x_2, x_1)$. 
+\begin{align*}
+\ell(x_1, x_2) - \ell(x_2, x_1) 
+& = w_\alpha \E_Y \left[(\alpha - \indi{Y < x_1})(Y-x_1) - (\alpha - \indi{Y < x_2})(Y-x_2) \right] + \\ 
+& \qquad w_\beta \E_Y \left[(\beta - \indi{Y < x_2})(Y-x_2) - (\beta - \indi{Y < x_1})(Y-x_1) \right] \\
+& = w_\alpha E_Y \left[\left\{-\alpha(x_1 - x_2) + \indi{Y < x_1}x_1 - \indi{Y < x_2}x_2 - \indi{x_2 \leq Y < x_1}Y \right\}\right] + \\
+& \qquad w_\beta E_Y \left[ \left\{\beta(x_1 - x_2) + \indi{Y < x_2}x_2 - \indi{Y < x_1}x_1 + \indi{x_2 \leq Y < x_1}Y \right\} \right] \\
+& = \E_Y \left[\left\{-\alpha(x_1 - x_2) + \indi{x_2 \leq Y < x_1}(x_1 - Y) + \indi{Y < x_2}(x_1 - x_2)\right\} \right] w_\alpha + \\
+& \qquad \E_Y \left[\left\{\beta(x_1 - x_2) - \indi{x_2 \leq Y < x_1}(x_1 - Y) - \indi{Y < x_2}(x_1 - x_2)\right\} \right] w_\beta 
+\end{align*} 
+Denote the coefficient of $w_\alpha, w_\beta$ as $c_\alpha, c_\beta$ respectively. Notice that $c_\alpha + c_\beta = (\beta-\alpha)(x_1 - x_2) > 0$. Therefore $\ell(x_1, x_2) - \ell(x_2, x_1) > 0$ if $w_\alpha = w_\beta$ (Condition I).
+
+Now, we consider Condition II: $w_\alpha < w_\beta$ and $(1-\alpha)w_\alpha \geq (1-\beta)w_\beta$. Denote $A = \P(Y < x_2)$, $B = \P(x_2 \leq Y < x_1)$ and observe that $\E_Y \indi{x_2 \leq Y < x_1}(x_1 - Y) \in [0, B(x_1 - x_2)]$. Then the difference in loss is written as:
+\begin{align*}
+\ell(x_1, x_2) - \ell(x_2, x_1) 
+& = \left(w_\alpha(A-\alpha) + w_\beta(\beta-A)\right)(x_1 - x_2) - (w_\beta - w_\alpha)\E_Y \indi{x_2 \leq Y < x_1}(x_1 - Y) \\
+& \geq -(w_\beta - w_\alpha)A + \beta w_\beta - \alpha w_\alpha - (w_\beta - w_\alpha)B(x_1 - x_2) \\
+& \geq -(w_\beta - w_\alpha)A + (w_\beta - w_\alpha) - (w_\beta - w_\alpha)B(x_1 - x_2) \\
+& \geq (w_\beta - w_\alpha)(1-A-B)(x_1 - x_2) \geq 0.
+\end{align*}
+Note that the second inequality used $\beta w_\beta - \alpha w_\alpha \geq w_\beta - w_\alpha$ which follows from Condition II and $A+B = \P(Y < x_1) \leq 1$. Condition III can be proved in a similar manner. \smallskip
+
+Next, we prove that there exists $(Y, x_1, x_2)$ such that post-sorting increases the loss if $(w_\alpha, w_\beta)$ does not satisfy any of three conditions. First consider the case $w_\alpha < w_\beta$ and $(1-\alpha)w_\alpha < (1-\beta)w_\beta$. Let $Y \equiv x_2$ almost surely. Then $A = 0$, $B = 1$, and $\E_Y \indi{x_2 \leq Y < x_1}(x_1 - Y) = x_1 - x_2$. Therefore,
+\begin{align*}
+\ell(x_1, x_2) - \ell(x_2, x_1) 
+& = \left(w_\alpha(A-\alpha) + w_\beta(\beta-A)\right)(x_1 - x_2) - (w_\beta - w_\alpha)\E_Y \indi{x_2 \leq Y < x_1}(x_1 - Y) \\
+& = \left(w_\alpha(0-\alpha) + w_\beta(\beta-0)\right)(x_1 - x_2) - (w_\beta - w_\alpha)(x_1 - x_2) \\
+& = (w_\beta - w_\alpha)(x_1 - x_2) > 0.
+\end{align*}
+Therefore, post-sorting increases the loss. Next, consider the case $w_\alpha > w_\beta$ and $\beta w_\beta < \alpha w_\alpha$. Let $Y \equiv x_1$ almost surely. Similar calculation shows that post-sorting increases the loss.
+\end{proof}
+
+
+
+We prove another class of loss functions where post-sorting does not increase the loss. Combining the characterization of loss functions that are consistent for single quantile level (Equation \eqref{eq:q_consistent_score}) and Theorem \ref{thm:decomp_multi_q}, a loss function that is consistent for multiple quantile levels can be written as the following form under mild regularity conditions:
+\begin{align} \label{eq:multi_q_consistent_loss}
+\ell(\{x_n\}_{n=1}^N) = \E_Y \sum_{n=1}^{N} w_n (\indi{Y < x_n} - \tau_n)(g_n(x_n) - g_n(Y)),  
+\end{align}
+where $g_n$ is a non-decreasing function for $n \in [N]$.
+
+\begin{prop}
+If a loss function $\ell$ defined as \eqref{eq:multi_q_consistent_loss} satisfies $w_i = w$ and $g_i(x) = g(x)$ for all $i \in [N]$, then post-sorting does not increase the loss.
+\end{prop}
+\begin{proof}
+Due to additivity of the loss function, it suffices to show $\ell(x_1, x_2, y) - \ell(x_2, x_1, y) \geq 0$ for $x_1 > x_2$ where $x_i$ corresponds to the $\tau_i$-level quantile estimate. Without loss of generality, assume $w=1$.
+\begin{align*}
+\ell(x_1, x_2) & - \ell(x_2, x_1) \\
+& = \E_Y [ (\indi{Y < x_1} - \tau_1)(g_1(x_1) - g_1(Y)) - (\indi{Y < x_2} - \tau_1)(g_1(x_2) - g_1(Y)) + \\
+& \quad \qquad (\indi{Y < x_2} - \tau_2)(g_2(x_2) - g_2(Y)) - (\indi{Y < x_1} - \tau_2)(g_2(x_1) - g_2(Y))] \\
+& = \E_Y [\tau_1(g_1(x_2)-g_1(x_1)) + \indi{Y < x_1}g_1(x_1) - \indi{Y < x_2}g_1(x_2) - \indi{x_2 \leq Y < x_1}g_1(Y) + \\
+& \quad \qquad \tau_2(g_2(x_1)-g_2(x_2)) + \indi{Y < x_2}g_2(x_2) - \indi{Y < x_1}g_2(x_1) + \indi{x_2 \leq Y < x_1}g_2(Y)]
+\end{align*}
+Now using the fact that $g_1 \equiv g_2 \equiv g$, most of the terms cancel out and we have 
+\begin{align*}
+\ell(x_1, x_2) - \ell(x_2, x_1) = (\tau_2 - \tau_1)(g(x_1) - g(x_2)) \geq 0.
+\end{align*}
+% {\color{blue} Just to add, in general case with $w_i=w$ but $g_i$ can be different, the difference of loss is as following:
+% \begin{align*}
+% \ell(x_1, x_2, y) - \ell(x_2, x_1, y) 
+% & = \tau_2(g_2(x_1)-g_2(x_2)) - \tau_1(g_1(x_1)-g_1(x_2)) - \int_{x_2}^{x_1} (\P(Y < x))(g_2'(x) - g_1'(x)) dx \\
+% & = (\tau_2 - \tau_1)(g_1(x_1) - g_1(x_2)) - \int_{x_2}^{x_1} (\P(Y < x) - \beta)(g_2'(x) - g_1'(x)) dx  
+% \end{align*}
+% Note that $g_i(x_1) - g_i(x_2) \geq 0$ since $g_i$ is non-decreasing.
+% }
+\end{proof}
+
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% NEW SECTION
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Regret bound of Hedge algorithm}
+We introduce the well-known regret bound of the Hedge algorithm, which is used frequently applied in the proofs of this paper.
+
+\begin{theorem}[Regret of Hedge (e.g., Theorem 1.5 of \cite{hazanoco})] \label{appthm:hedge_regret}
+  Consider an online learning problem with $m$ experts receiving bounded losses 
+  $\{\ell_{t,i}\}_{1 \le i \le m,\, 1 \le t \le T}$.
+  % $\sup_{1 \le i \le m,\, 1 \le t \le T} \ell_{t,i} \le B$. 
+  
+  Suppose that at time step $t$ we make the same prediction as expert $i$ with probability
+  \[
+  w_{t,i} = \frac{\exp\!\left(-\eta \sum_{s < t} \ell_{s,i}\right)}
+  {\sum_{j=1}^m \exp\!\left(-\eta \sum_{s < t} \ell_{s,j}\right)},
+  \]
+  for some $\eta > 0$. Then,
+  \[
+  \sum_{t=1}^T \sum_{i=1}^m w_{t,i}\ell_{t,i}
+  \;\le\;
+  \min_{1 \le i \le m} \sum_{t=1}^T \ell_{t,i}
+  \;+\; \eta \sum_{t=1}^T \sum_{i=1}^mw_{t,i}\ell_{t,i}^2
+  \;+\; \frac{\log(m)}{\eta}.
+  \]
+  \end{theorem}

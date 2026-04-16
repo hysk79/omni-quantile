@@ -1,0 +1,206 @@
+\section{Omniprediction for weighted quantile losses} \label{sec:multi_wql}
+In this section, we discuss omniprediction that considers weighted quantile losses as the set of scoring functions of interest. Although this is a much smaller set compared to the set of all scoring functions that are consistent for multiple quantile levels, which we discussed in Section \ref{sec:multi_q}, it is still a non-trivial set of scoring functions that is worth investigating. Importantly, omniprediction for weighted quantile losses does not require any discretization of ground truth base forecasters. 
+
+We introduce two algorithms for omniprediction for weighted quantile losses. In Section \ref{subsec:hedge_wql}, we discuss the first algorith that runs Hedge algorithm on each quantile level then combine quantile estimates from each level. In Section \ref{subsec:twoplayer_wql}, we introduce a two-player game based algorithm that has a similar taste to the omniprediction algorithm for multiple quantile levels discussed in Section \ref{sec:multi_q}. In Section \ref{subsec:comparison_wql}, we compare the two algorithm in terms of time complexity, quantile crossing, and omniprediction error bound.
+
+
+\paragraph{Notation}
+Define the pinball loss at quantile level $\tau$ as $\rho_\tau(x) := \tau x\indi{x \geq 0} +(1-\tau)|x|\indi{x < 0} = (\tau - \indi{x < 0})x$. Weighted quantile loss at quantile levels $\{\tau_n\}_{n=1}^N$ is defined as 
+\[
+S(\{x_n\}_{n=1}^N, y) := \sum_{n=1}^N w_n \rho_{\tau_n}(y - x_n),
+\]
+where $w_n$ is the weight for the $\tau_n$-level quantile prediction and $\sum_{n=1}^N w_n = 1$. We denote $\cs_{wql}$ as the set of all weighted quantile loss functions and use $\rho_n(x, y)$ to denote $\rho_{\tau_n}(y-x)$ for $n \in [N]$. We define $f_\text{min}(t) = \min_{n \in [N], b \in [B]} f_b^n(t)$ and $f_\text{max}(t) = \max_{n \in [N], b \in [B]} f_b^n(t)$ for each time $t$. \smallskip
+
+We aim to come up with $\{\hat{p}_n(t)\}_{n=1}^N$ that minimizes the following omniprediction objective:
+\[
+\sup_{S \in \cs_{wql},\, b \in [B]} \frac{1}{T} \sum_{t=1}^T [S(\{\hat{p}_n(t)\}_{n=1}^N, Y_t) - S(\{f_b^n(t)\}_{n=1}^N, Y_t)].
+\]
+
+
+
+
+\subsection{Hedge algorithm on each quantile level}
+In this subsection, we introduce the first algorithm that essentially runs Hedge algorithm on each quantile level then provide the omniprediction error bound for this algorithm. We denote the output from Algorithm \ref{alg:wql_hedge} by $\{\hat{p}_n^H(t)\}_{n=1}^N$ where the superscript $H$ denotes it is from the Hedge algorithm.
+ 
+\begin{algorithm}[h]
+\caption{Hedge algorithm for multiple quantile levels in parallel} \label{alg:wql_hedge}
+\begin{algorithmic}[1]
+\State \textbf{Data:} Data stream $\{Y_t\}_{t=1}^T$, Quantile levels $\{\tau_n\}_{n=1}^N$, Learning rate $\eta> 0$, Base forecasters: $\{f_b\}_{b=1}^B$ that outputs $f_b^n(t)$ as $\tau_n$-level quantile estimate at time $t$;
+\State \textbf{Initialize:} $w_{b}^n(1) = \frac{1}{B}$, $\forall b \in [B], n \in [N]$;
+\For{$t = 1, \ldots, T$}
+    \State \textbf{Output:} Output $\{\hat{p}_n^H(t)\}_{n=1}^N$ where $\hat{p}_n^H(t) = \sum_{b=1}^B w_{b}^n(t) f_b^n(t)$;
+    \State Update weights $w_{b}^n$ for $b \in [B], n \in [N]$:
+    \[
+    w_{b}^n(t+1) 
+    = \frac{w_{b}^n(t) \exp\left(-\eta \rho_n(f_b^n(t), Y_t)\right)}{\sum_{b=1}^B w_{b}^n(t) \exp\left(-\eta \rho_n(f_b^n(t), Y_t)\right)}
+    \]
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+
+This algorithms yields the following guarantee for each quantile level $\tau_n$:
+\begin{align*}
+\frac{1}{T}\sum_{t=1}^T \rho_n(\hat{p}_n^H(t), Y_t) 
+& \leq \frac{1}{T}\sum_{t=1}^T w_b^n(t) \rho_n(f_b^n(t), Y_t)  \\
+& \leq \min_b \frac{1}{T}\sum_{t=1}^T \rho_n(f_b^n(t), Y_t) + \frac{\eta}{T} \sum_{t=1}^T \sum_{b=1}^B w_{b}^n(t) \rho_n(f_b^n(t), Y_t)^2 + \frac{\log B}{\eta T},
+\end{align*}
+where the first inequality is due to convexity of $\rho_\tau$ and the second inequality is due to the regret bound of the Hedge algorithm (Theorem \ref{appthm:hedge_regret}). This gives the omniprediction error bound for Algorithm \ref{alg:wql_hedge} as follows:
+\begin{align}
+    & \sup_{S \in \cs_{wql},\, b \in [B]} \frac{1}{T} \sum_{t=1}^T [S(\{\hat{p}_n^H(t)\}_{n=1}^N, Y_t) - S(\{f_b^n(t)\}_{n=1}^N, Y_t)] \nonumber \\
+    & = \max_{n \in [N], b \in [B]} \frac{1}{T} \sum_{t=1}^T [\rho_n(\hat{p}_n^H(t), Y_t) - \rho_n(f_b^n(t), Y_t)] \nonumber \\
+    & \leq \eta \max_{n\in[N]} \left( \frac{1}{T} \sum_{t=1}^T \sum_{b=1}^B w_{b}^n(t) \rho_n(f_b^n(t), Y_t)^2\right)  + \frac{\log B}{\eta T} 
+    \quad \leq \quad \eta \max_{n\in[N]} \left( \frac{1}{T} \sum_{t=1}^T \max_{b} \rho_n(f_b^n(t), Y_t)^2  \right) + \frac{\log B}{\eta T} \label{eq:hedge_wql_error_bound}
+     %\quad = \quad \co\left(\sqrt{\frac{\max_{n, b} \rho_n(f_b^n(t), Y_t)^2 \log B}{T}}\right).
+\end{align}
+
+
+
+
+
+
+
+\subsection{Two-player game based algorithm}
+In this subsection, we introduce the second algorithm that is based on two-player game that is similar to Algorithm \ref{alg:omni-twoplayer_online_multi_q} in Section \ref{sec:multi_q} then provide the omniprediction error bound for this algorithm. In the process, we prove that the output from this algorithm does not exhibit quantile crossing. We denote the output from Algorithm \ref{alg:omni-twoplayer_online_wql} by $\{\hat{p}^G_n(t)\}_{n=1}^N$ where the superscript $G$ denotes it is from the two-player Game based algorithm.
+
+% Algorithm \ref{alg:omni-twoplayer_online_wql} below outputs $\{\hat{p}^G_n(t)\}_{n=1}^N$ as $\{\tau_n\}_{n=1}^N$-level quantile estimates at time $t$, where the superscript $G$ denotes it is from the two-player Game based algorithm.
+
+\begin{algorithm}[h]
+    \caption{Two-player game based omniprediction for weighted quantile losses} \label{alg:omni-twoplayer_online_wql}
+    \begin{algorithmic}[1]
+    \State \textbf{Data:} Data stream $\{Y_t\}_{t=1}^T$, quantile levels $\tau_1 < \tau_2 < ... < \tau_N$, Learning rate $\eta> 0$, Base forecasters: $\{f_b\}_{b=1}^B$ that outputs $f_b^n(t)$ as $\tau_n$-level quantile estimate at time $t$;
+    \State \textbf{Initialize:} $w_{b}^n(1) = \frac{1}{NB}$, $\forall n \in [N], b \in [B]$;
+    \For{$t = 1, \ldots, T$}
+      \State \textbf{1) Make prediction at time $t$}:
+        \State Define $V_0 = V_N = 0$, $\theta_0^* = f_\text{min}(t)$, $\theta_N^* = f_\text{max}(t)$;
+        \For{$n=1, \ldots, N-1$}
+        \State Define $V_n(\theta)$ as:
+          \[
+          V_n(\theta) = \sum_{s=1}^{n} \sum_{b=1}^B w_b^s \max(f_b^s(t)-\theta, 0) + \sum_{s=n+1}^{N} \sum_{b=1}^B  w_b^s \max(\theta - f_b^s(t), 0)
+          \]
+        \State Compute $V_n$ and $\theta_n^*$:
+          \begin{align} \label{eq:Vn_def_wql}
+            V_n = \min_{\theta \in [f_\text{min}(t), f_\text{max}(t)]} V_n(\theta), \qquad
+            \theta_n^* = \min\left\{\theta \mid \theta\in [\theta_{n-1}^*, f_\text{max}(t)],  V_n(\theta) = V_n \right\}
+          \end{align}
+        \EndFor \vspace{-0.2cm}\\
+        \State \textbf{Output} $\hat{p}^G(t) = \{\hat{p}^G_n(t)\}_{n=1}^N$ where 
+        \[
+        \hat{p}^G_n(t) = \frac{1}{\sum_{b=1}^B w_b^n(t)} \left( \sum_{b=1}^B w_b^n(t) f_b^n(t) + V_{n-1} - V_n  \right);
+        \] 
+        \State \textbf{2) Update the weights for each $\rho_n$ and $f_b$}:
+            \[ 
+            w_{b}^n(t+1) 
+            = \frac{w_{b}^n(t) \exp\bigl(\eta [\rho_n(\hat{p}^G_n(t), Y_t) - \rho_{n}(f_b^n(t), Y_t)]\bigr)}
+            {\sum_{n=1}^N \sum_{b=1}^B w_{b}^n(t) \exp\bigl(\eta [\rho_n(\hat{p}^G_n(t), Y_t) - \rho_{n}(f_b^n(t), Y_t)]\bigr)}, \quad \forall n \in [N], b \in [B];
+            \]
+    \EndFor
+    \end{algorithmic}
+\end{algorithm}
+
+As in Section \ref{sec:multi_q}, the quantities $\theta_n^*$ and $\hat{p}^G_n(t)$ satisfies the following properties:
+\begin{prop}\label{prop:theta_n_sorted}
+Define a function $V_n(\theta)$ and a quantity $V_n^*$ for $n \in [N-1]$ as
+\begin{align*}
+    V_n(\theta) := \sum_{s=1}^{n} \sum_{b=1}^B w_b^s \max(f_b^s(t)-\theta, 0) + \sum_{s=n+1}^{N}\sum_{b=1}^B  w_b^s \max(\theta - f_b^s(t), 0) \geq 0, \qquad V_n^* := \min_{\theta \in \R} V_n(\theta).    
+\end{align*}
+and $V_0^* = V_N^* = 0$. Let $J_n^*$ be the set of $\theta$s that minimizes the $V_n(\theta)$. Then, there exists a sorted sequence $f_\text{min}(t) \leq \theta_0^* \leq \theta_1^* \leq ... \leq \theta_{N-1}^* \leq \theta_N^* = f_\text{max}(t)$ such that $\theta_n^* \in J_n^*$ for $n \in [N-1]$.
+\end{prop}
+\begin{proof}
+Since $V_n(\theta)$ shares the same structure with $V_n(j)$ in Section \ref{sec:multi_q}, existence of a sorted sequence follows the same proof in Lemma \ref{lem:jn_sort}. To prove that such $\theta_n^*$ takes values in $[f_\text{min}(t), f_\text{max}(t)]$ for all $n \in [N-1]$, it suffices to show that $J_n^* \cap [f_\text{min}(t), f_\text{max}(t)] \neq \emptyset$ for all $n \in [N-1]$. On $\theta \leq f_\text{min}(t)$, the second sum in $V_n(\theta)$ is simply zero and thus $V_n(\theta)$ is non-increasing. On $\theta \geq f_\text{max}(t)$, the first sum in $V_n(\theta)$ is zero and thus $V_n(\theta)$ is non-decreasing. Therefore, $J_n^*$ cannot only contain values that are not in $[f_\text{min}(t), f_\text{max}(t)]$.
+\end{proof}
+  
+Next, we prove that $\{\hat{p}^G_n(t)\}_{n=1}^N$ does not exhibit quantile crossing.
+\begin{prop} \label{prop:pn_def_wql}
+Given $V_n^*$, $n \in [N] \cap \{0\}$ defined in Proposition \ref{prop:theta_n_sorted}, define $p_n^*$ as 
+\begin{align} \label{eq:pn_def_wql}
+p_n^* = \frac{1}{\sum_{b=1}^B w_b^n(t)} \left( \sum_{b=1}^B w_b^n(t) f_b^n(t) + V_{n-1}^* - V_n^*  \right).
+\end{align}
+Then, $f_\text{min}(t) \leq p_1^* \leq p_2^* \leq ... \leq p_N^* \leq f_\text{max}(t)$ holds.
+\end{prop}
+\begin{proof}
+With $\theta_n^*$ from Proposition \ref{prop:theta_n_sorted}, it suffices to prove that $\theta_{n-1}^* \leq p_n^* \leq \theta_n^*$ for $n \in [N-1]$. Observe the identity $V_{n-1}(\theta) - V_{n}(\theta) = \sum_{b=1}^B w_b^n(t) (\max(\theta - f_b^n(t), 0) - \max(f_b^n(t)-\theta, 0)) = \sum_{b=1}^B w_b^n(t) (\theta-f_b^n(t))$. This implies that 
+\begin{align*}
+p_n^* & = \frac{1}{\sum_{b=1}^B w_b^n(t)}\left( \sum_{b=1}^B w_b^n(t) f_b^n(t) + V_{n-1}^* - V_{n-1}(\theta_n^*) + \sum_{b=1}^B w_b^n(t) (\theta_n^* - f_b^n(t)) \right) \leq \theta_n^*,
+\end{align*}
+since $V_{n-1}^* - V_{n-1}(\theta_n^*) \leq 0$ by the definition of $V_n^*$. Similarly, 
+\begin{align*}
+    p_n^* & = \frac{1}{\sum_{b=1}^B w_b^n(t)}\left( \sum_{b=1}^B w_b^n(t) f_b^n(t) + V_{n-1}(\theta_{n-1}^*) - V_n^* + \sum_{b=1}^B w_b^n(t) (\theta_{n-1}^* - f_b^n(t)) \right) \geq \theta_{n-1}^*,
+\end{align*}
+which completes the proof.
+\end{proof}
+
+Lastly, we prove that $\{\hat{p}^G_n(t)\}_{n=1}^N$ is a solution to the minimax program \eqref{eq:minimax_Pt_multi_q}.
+\begin{theorem}\label{thm:minimax_wql}
+    Given quantile levels $\tau_1 < \tau_2 < ... < \tau_N$ and quantile forecasts $\hat{f}_b^n(t)$ for $b \in [B]$, $n \in [N]$, define $V_n^*$ and $\theta_n^*$ for $n \in [N]\cap\{0\}$ as in Proposition \ref{prop:theta_n_sorted} and define $p_n^*$, $n \in [N]$ as in \eqref{eq:pn_def_wql}. Then, $P_n^* \equiv p_n^*$ for $n \in [N]$ with 
+    \[
+    P_y^* = \tau_1 \delta_{f_\text{min}(t)} + (1-\tau_N)\delta_{f_\text{max}(t)} + \sum_{n=1}^{N-1}(\tau_{n+1}-\tau_n)\delta_{\theta_n^*}
+    \]
+    is a solution of the minimax program 
+    \[
+    \min_{P_1, P_2, ..., P_N \in \cp(\R)} \max_{P_y \in \cp(\R)} \sum_{n=1}^N \sum_{b=1}^B w_b^n(t) \E_{P_n \sim P_n, Y \sim P_y} [\rho_n(P_n, Y) - \rho_n(f_b^n(t), Y)]
+    \]
+    and the value of the minimax program is 
+    \(
+    -\sum_{n=1}^{N-1}(\tau_{n+1}-\tau_n) V_n^* \leq 0.
+    \)
+\end{theorem}
+\begin{proof}
+Similar to the proof of Theorem \ref{thm:minimax_negative_multi_q}, define $O(\{P_n\}_{n=1}^N, P_y)$ as 
+\[
+O(\{P_n\}_{n=1}^N, P_y) = \sum_{n=1}^N \sum_{b=1}^B w_b^n(t) \E_{P_n \sim P_n, Y \sim P_y} [\rho_n(P_n, Y) - \rho_n(f_b^n(t), Y)].
+\]
+It suffices to prove that $O(\{P_n^*\}_{n=1}^N, P_y^*) = \max_{P_y} O(\{P_n^*\}_{n=1}^N, P_y^*) = \min_{P_n \in \cp(\R), n \in [N]} O(\{P_n\}_{n=1}^N, P_y^*)$. Observe that $\rho_\tau(x,y) = \tau(y-x) + \max(x-y,0)$. This simplifies $O(\{P_n^*\}_{n=1}^N, P_y)$ to 
+\begin{align*}
+O(\{P_n^*\}_{n=1}^N, P_y) 
+& = \E_{Y \sim P_y} \sum_{n=1}^N \sum_{b=1}^B w_b^n(t) [\tau_n(Y-p_n^*) + \max(p_n^*-Y,0) - \tau_n(Y-f_b^n(t)) - \max(f_b^n(t)-p_n^*,0)] \\
+& = \E_{Y \sim P_y} \sum_{n=1}^N \sum_{b=1}^B w_b^n(t) [\max(p_n^*-Y,0) - \max(f_b^n(t)-p_n^*,0)] + C, 
+\end{align*}
+where $C = -\sum_{n=1}^N (V_n^* - V_{n-1}^*) \tau_n = - \sum_{n=1}^{N-1}(\tau_{n+1}-\tau_n) V_n^*$ does not depend on $P_y$. Now we divide cases into $y < p_1^*$, $p_1^* \leq y < p_2^*$, ..., $p_{N-1}^* \leq y < p_N^*$. 
+\begin{align*}
+& \sum_{n=1}^N \sum_{b=1}^B w_b^n(t) [\max(p_n^*-y,0) - \max(f_b^n(t)-p_n^*,0)] \\
+& = 
+\begin{cases}
+    - \sum_{n=1}^N \sum_{b=1}^B w_b^n \max(y - f_b^n(t), 0) & y < p_1^* \\
+    - \left( \sum_{s=n+1}^N \sum_{b=1}^B w_b^s \max(y - f_b^s(t), 0) + \sum_{s=1}^n \sum_{b=1}^B w_b^s \max(f_b^s(t)-y, 0) \right) + V_n^* & y \in [p_n^*, p_{n+1}^*)  \\
+    - \sum_{n=1}^N \sum_{b=1}^B w_b^n \max(f_b^n(t) - y, 0) & y \geq p_N^*
+\end{cases}
+\end{align*}
+In the interval $(-\infty, p_1^*)$, the quantity is maximized at $y = \theta_0^* = f_\text{min}(t)$ and its maximum value is $0$. In interval $[p_n^*, p_{n+1}^*)$, the quantity is maximized at $y = \theta_n^*$ (contained in the interval as shown in Proposition \ref{prop:pn_def_wql}) and its maximum value is $0$. In interval $(p_{N-1}^*, \infty)$, the quantity is maximized at $y = \theta_N^* = f_\text{max}(t)$ and its maximum value is $0$. Since $P_y^*$ only puts mass on the points $\{\theta_n^*\}_{n=0}^N$, $O(\{P_n^*\}_{n=1}^N, P_y^*) = \max_{P_y} O(\{P_n^*\}_{n=1}^N, P_y) = C = - \sum_{n=1}^{N-1}(\tau_{n+1}-\tau_n) V_n^* \leq 0$.
+
+Next, $O(\{P_n^*\}_{n=1}^N, P_y^*) = \min_{P_n \in \cp(\R), n \in [N]} O(\{P_n\}_{n=1}^N, P_y^*)$ follows directly from the propriety of $\rho_\tau$ and the fact that $p_n^*$ is $\tau_n$-level quantile of $P_y^*$. 
+\end{proof}
+
+Putting all these together, the omniprediction error bound for Algorithm \ref{alg:omni-twoplayer_online_wql} is as following:
+% \begin{theorem}
+%     \label{thm:omni-twoplayer_online_wql}
+%     For a set of quantile levels $\tau_1 < \tau_2 < ... < \tau_N$ and base forecasters $\{f_b\}_{b=1}^B$ that provides $\{\tau_n\}_{n=1}^N$-level quantile forecasts $\{f_b^n(t)\}_{n=1}^N$ at each time $t \in [T]$. With learning rate $\eta$, the output $\hat{p}^G(t) = \{\hat{p}^G_n(t)\}_{n=1}^N$ from Algorithm \ref{alg:omni-twoplayer_online_wql} achieves the following omniprediction error:
+%     \begin{align*}
+%     \sup_{S \in \cs_{wql},\, b \in [B]} \frac{1}{T} & \sum_{t=1}^T [S(\{\hat{p}^G_n(t)\}_{n=1}^N, Y_t) - S(\{f_b^n(t)\}_{n=1}^N, Y_t)] \\
+%     % & = \max_{n \in [N], b \in [B]} \frac{1}{T} \sum_{t=1}^T [S(\hat{p}^G_n(t), Y_t) - S(f_b^n(t), Y_t)] \\
+%     & \leq \eta \left(\frac{1}{T} \sum_{t=1}^T \max_{n,b} \left(\rho_{n}(\hat{p}^G_n(t), Y_t) - \rho_{n}(f_b^n(t), Y_t)\right)^2\right) + \frac{\log BN}{\eta T} \quad % = \quad \co\left(\sqrt{\frac{\max_{n, b} \left(\rho_{\tau_n}(f_b^n(t), Y_t) - \rho_{\tau_n}(f_b^n(t), Y_t)\right)^2 \log B}{T}}\right).
+%     \end{align*}
+% \end{theorem}
+% \begin{proof}
+\begin{align}
+& \sup_{S \in \cs_{wql},\, b \in [B]} \frac{1}{T} \sum_{t=1}^T [S(\{\hat{p}^G_n(t)\}_{n=1}^N, Y_t) - S(\{f_b^n(t)\}_{n=1}^N, Y_t)] \nonumber\\
+& = \max_{n \in [N], b \in [B]} \frac{1}{T} \sum_{t=1}^T [\rho_n(\hat{p}^G_n(t), Y_t) - \rho_n(f_b^n(t), Y_t)] \nonumber\\
+& \leq \frac{1}{T} \sum_{t=1}^T \sum_{n=1}^N \sum_{b=1}^B w_b^n(t) [\rho_n(\hat{p}^G_n(t), Y_t) - \rho_n(f_b^n(t), Y_t)] \nonumber\\
+& \quad + \frac{\eta}{T} \sum_{t=1}^T \sum_{n=1}^N \sum_{b=1}^B w_b^n(t) \left(\rho_{n}(\hat{p}^G_n(t), Y_t) - \rho_{n}(f_b^n(t), Y_t)\right)^2 + \frac{\log BN}{\eta T} \nonumber\\
+& \underset{\text{Thm. } \ref{thm:minimax_wql}}{\leq} \eta \left(\frac{1}{T} \sum_{t=1}^T \max_{n,b} \left(\rho_{n}(\hat{p}^G_n(t), Y_t) - \rho_{n}(f_b^n(t), Y_t)\right)^2\right) + \frac{\log BN}{\eta T}. \label{eq:omni_twoplayer_wql_error_bound}
+\end{align}
+% \end{proof}
+
+
+
+\subsection{Comparison between two algorithms} \label{subsec:comparison_wql}
+We conclude the section by comparing the two algorithms in terms of time complexity, quantile crossing, and omniprediction error bound.
+
+\paragraph{Time complexity}
+The time complexity of Algorithm \ref{alg:wql_hedge} is $O(NB)$ per time step. Algorithm \ref{alg:omni-twoplayer_online_wql} is more complicated, where the main computational bottleneck lies in computing $V_n^*$ and $\theta_n^*$ for each $n \in [N-1]$ (see Equation~\ref{eq:Vn_def_wql}). A naive computation of the minimizers $\{\theta_n^*\}$ requires $O(N^3 B^2)$ per each time step. Appendix~\ref{appsubsec:wql_fast} introduces a subroutine that computes all $\{\theta_n^*\}$ and $\{V_n^*\}$ in $O(K\log K + NB)$ time, where $K$ is the number of unique values in $\{f_b^n(t)\}_{b,n}$, by exploiting the structure of $\{V_n^*\}$.
+
+\paragraph{Quantile crossing.}
+Due to Proposition \ref{prop:pn_def_wql}, quantile forecasts from Algorithm \ref{alg:omni-twoplayer_online_wql} does not exhibit quantile crossing. On the other hand, Algorithm \ref{alg:wql_hedge} does not guarantee such property and post-sorting the resulting quantile does not always decrease the loss. Appendix~\ref{appsec:post_sorting} provides examples where post-sorting rather increases the loss.
+
+\paragraph{Omniprediction error bound.}
+Comparing the omniprediction error bound \eqref{eq:hedge_wql_error_bound} and \eqref{eq:omni_twoplayer_wql_error_bound}, we notice that the former bound is a function of the error of base forecasters, $\rho_n(f_b^n(t), Y_t)$, while the latter bound is a function of relative error of two-player game based algorithm output with respect to base forecasters, $\rho_n(\hat{p}^G_n(t), Y_t) - \rho_n(f_b^n(t), Y_t)$. This suggests that the two-player based algorithm would achieve a better omniprediction error for harder prediction tasks since the error of base forecasters is likely to be larger compared to the relative error.
