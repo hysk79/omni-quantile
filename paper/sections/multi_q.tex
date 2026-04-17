@@ -4,7 +4,7 @@ The omniprediction objective we want to minimize is given by
 \[
 \sup_{S \in \cs,\, f \in \cf} \frac{1}{T} \sum_{t=1}^T \E_{p \sim \hat{P}} [S(p, Y_t)] - \E[S(f_t, Y_t)]
 \]
-where $\cs$ is the class of \textit{all} scoring functions that are consistent for the multiple quantile levels and $\cf$ is a finite set of competitors or base forecasters.
+where $\cs$ is the class of \textit{all} scoring functions that are consistent for the multiple quantile levels and $\cf$ is a finite set of comparators or base forecasters.
 
 We follow a similar flow as in Section \ref{sec:single_q}. Section \ref{subsec:decomp_multi_q} discusses the previous result from \cite{fissler2016multiq} on decomposition of scoring function that is consistent for multiple quantile levels. With this result and same discretization scheme from Section \ref{subsec:discretization}, Section \ref{subsec:omni_multi_q} derive a closed-form solution to the multiple quantile level version of minimax program \eqref{eq:minimax_Pt_multi_q} and present the multiple quantile level omniprediction algorithm. Lastly, Section \ref{subsec:separate_multi_q} compares multiple quantile level omniprediction with running separate single quantile level omniprediction for each quantile level.
 

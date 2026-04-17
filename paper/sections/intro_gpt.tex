@@ -1,63 +1,51 @@
 \section{Introduction}
-Probabilistic forecasts are typically evaluated using a chosen scoring rule, such as log loss or the continuous ranked probability score (CRPS). However, different proper scoring rules emphasize different aspects of predictive quality and may lead to different conclusions about the same forecast. This raises a fundamental question: can we construct a predictor that performs well simultaneously across a broad class of scoring rules, rather than optimizing for a single one?
+Probabilistic forecasts are typically evaluated using a chosen proper scoring rule (Definition \ref{def:proper_scoring_rule}), such as log score or the continuous ranked probability score (CRPS). However, different proper scoring rules emphasize different aspects of predictive quality and may lead to different conclusions about the same forecast. This raises a fundamental question: can we construct a predictor that performs well simultaneously across \emph{all} proper scoring rules, rather than optimizing for a single one?
 
-Omniprediction provides a principled framework to address this question. Introduced by \cite{gopalan2022omnipredictors}, omniprediction seeks a predictor that minimizes the worst-case loss over a class of loss functions and a class of comparator functions. Formally, given a class of losses $\mathcal{L}$ and a class of competitors $\mathcal{F}$, the goal is to construct a predictor $\hat{p}(t)$ that minimizes
+This objective is also motivated from downstream decision-making. In many applications, different users interact with forecasts through their own utility (or scoring) functions. If a user believes a predictive distribution $P$ and chooses an action that minimizes their expected loss, then this induces a proper scoring rule. Consequently, minimizing loss over all proper scoring rules leads to minimizing the decision loss for all users simultaneously, regardless of how their objectives differ. % More explicitly, let $u$ denote a user-specific utility (or scoring) function and let $\mathcal{A}$ denote the action space. Given a predictive distribution $P$, a user selecting an action $a(P;u) \in \arg\min_{a \in \mathcal{A}} \mathbb{E}_{Y \sim P}[u(a,Y)]$ induces a proper scoring rule $S(P,Y) := u(a(P;u), Y)$. 
+
+
+In many practical settings, working with full predictive distributions is unnecessary or computationally burdensome. A natural alternative is to summarize predictions through a collection of quantile estimates. For a broad class of decision problems, optimal actions depend only on certain quantiles, making such summaries sufficient for decision-making.
+
+To illustrate, consider a hospital with capacity $C$. The hospital is primarily concerned with whether predicted demand $\hat{p}$ and realized demand $Y$ fall on different sides of $C$. Underestimating demand ($\hat{p} < C < Y$) may lead to severe consequences, while overestimating ($Y < C < \hat{p}$) incurs milder costs. Suppose the hospital uses the scoring function
 \[
-\sup_{S \in \mathcal{L},\, f \in \mathcal{F}} 
-\frac{1}{T}\sum_{t=1}^T [S(\hat{p}(t), Y_t) - S(f(t), Y_t)].
+u(\hat{p}, Y) = 3\,\mathbf{1}\{\hat{p} \leq C < Y\} + \mathbf{1}\{Y \leq C < \hat{p}\}
 \]
-
-A key motivation for this objective arises from downstream decision-making. In many applications, different users interact with forecasts through their own utility (or loss) functions. If a user believes a predictive distribution $P$ and chooses an action that minimizes their expected loss, then this induces a proper scoring rule. Consequently, minimizing loss over all proper scoring rules leads to minimizing the decision loss for all users simultaneously, regardless of how their objectives differ.
-
-More explicitly, let $u$ denote a user-specific utility (or loss) function and let $\mathcal{A}$ denote the action space. Given a predictive distribution $P$, a user selecting an action $a(P;u) \in \arg\min_{a \in \mathcal{A}} \mathbb{E}_{Y \sim P}[u(a,Y)]$ induces a proper scoring rule $S(P,Y) := u(a(P;u), Y)$. %, and omniprediction over all proper scoring rules can be equivalently formulated as minimizing the worst-case decision loss across all users:
-% \[
-% \sup_{\|u\|_2 \leq 1,\, f \in \mathcal{F}} 
-% \mathbb{E}\!\left[u\big(a(p(X);u), Y\big)\right] 
-% - 
-% \mathbb{E}\!\left[u\big(a(f(X);u), Y\big)\right].
-% \]
-
-In many practical settings, however, working with full predictive distributions is unnecessary or computationally burdensome. As a natural stepping stone, we instead consider predictors that output a collection of quantile estimates. In this setting, users base their decisions on these quantile summaries rather than the full distribution. For a class of decision problems in which optimal actions depend only on certain quantiles, a user who trusts the reported quantile estimates selects an action that is optimal with respect to those quantiles. {\color{blue} example to be added}
-
-% A canonical example arises in interval prediction. A decision-maker selects lower and upper bounds $(a_\ell, a_u)$ and incurs asymmetric penalties for under- and over-coverage. Consider a utility of the form
-% \[
-% u(a_\ell, a_u, y)
-% =
-% c_\ell^- (a_\ell - y)_+ + c_\ell^+ (y - a_\ell)_+
-% +
-% c_u^- (a_u - y)_+ + c_u^+ (y - a_u)_+
-% + \lambda (a_u - a_\ell),
-% \]
-% where $(x)_+ = \max(x,0)$ and $\lambda \ge 0$ controls the width of the interval.
+to guide its planning decisions; for instance, if the forecast $\hat{p}$ exceeds capacity $C$, the hospital will take measures to prepare for more hospitalizations. Note that the scoring function above is minimized (in expectation) when $\hat{p}$ equals the true $75$th percentile of $Y$. Thus, minimizing this loss corresponds to accurately predicting the $75$th quantile of $Y$. See Section~\ref{subsec:decomp_single_q} for another example from spread betting in prediction markets.
 
 
-Analogously to the probabilistic case, this decision process induces a class of scoring functions that are \emph{consistent} for the corresponding quantile functionals. Therefore, restricting attention to quantile forecasts leads naturally to an omniprediction objective over all scoring functions that are consistent for the specified quantile levels. This provides a principled bridge between the general probabilistic forecasting framework and the quantile-based setting studied in this paper.
 
-While the omniprediction framework is conceptually appealing, its algorithmic realization is challenging. Recent work has made significant progress in special cases. For binary outcomes, \cite{kleinberg2023ucal} worked on minimizing the regret with respect to a single hypothetical base rate forecaster over all proper scoring rules. \cite{isaac2025omni} proposes two-player game-based algorithms that achieve near-optimal regret guarantees while competing against all proper scoring rules. For more general settings, \cite{gopalan2022omnipredictors} studies omniprediction in a batch framework and characterizes the statistical complexity of the problem via approximation-theoretic quantities. More recently, \cite{lu2025omni_nonlinear} considers omniprediction for non-linear losses and continuous outcomes, focusing on sample-efficient algorithms and swap regret guarantees.
 
-Despite these advances, there remains a gap between theory and practice in continuous-outcome settings. In particular, many applications in forecasting focus on quantiles rather than full distributions, and require producing multiple quantile estimates that are coherent (i.e., non-crossing). Existing omniprediction approaches do not directly address this structure, nor do they provide efficient algorithms that exploit the rich geometry of quantile-based losses.
 
-\paragraph{Our contributions.}
-In this paper, we develop an omniprediction framework tailored to quantile forecasting, covering both single and multiple quantile levels. Our main contributions are as follows:
+Analogous to propriety in the probabilistic setting, scoring functions whose expectation (in $Y$) is minimized at a target quantile are called \emph{consistent} (Definition \ref{def:consistency}) for that quantile level. Restricting attention to quantile forecasts therefore leads naturally to a goal of minimizing the score over all scoring functions that are consistent for the specified quantile levels.
+
+The task of optimizing loss over multiple scoring functions, rather than a single scoring function, has emerged in the literature in part due to fairness considerations and multigroup objectives. Multiaccuracy \cite{hebert2018multicalibration, kim2019multiaccuracy} requires that a predictor be approximately unbiased on every subgroup in a rich class and 
+% in the sense that prediction errors have small conditional expectation on each group. 
+Multicalibration \cite{hebert2018multicalibration} strengthens this requirement by demanding that predictions be calibrated simultaneously across all subgroups in a specified class. Most relevant to our work is the notion of omniprediction \cite{gopalan2022omnipredictors}, which constructs a predictor that minimizes the worst-case score over a class of scoring (loss) functions and with respect to a class of comparator functions. Formally, given a class of scoring functions $\mathcal{S}$ and a class of comparator functions $\mathcal{F}$, the goal is to construct a predictor $\hat{p}(t)$ that minimizes
+\begin{align}\label{eq:omni_objective}
+    \sup_{S \in \mathcal{S},\, f \in \mathcal{F}} 
+    \E_{(X,Y) \sim \cd} \Big( S(\hat{p}(X), Y) - S(f(X), Y) \Big).    
+\end{align}
+
+While the omniprediction framework is conceptually appealing, its algorithmic realization is naturally challenging. Because of this, initial work on omniprediction focused on binary $Y$ setting. \cite{gopalan2022omnipredictors, gopalan2023loss, garg2024oracle, okoroafor2025near} observes that satisfying multicalibration is a sufficient condition for omniprediction and therefore utilizes multicalibration algorithms. \cite{gopalan2023swap} shows multicalibration achieves stronger guarantees than omniprediction \cite{garg2024oracle, isaac2025omni} propose two-player game based algorithms that achieves omniprediction without necessarily satisfying multicalibration. \cite{isaac2025omni} in particular considers all proper binary scoring rules as the class of scoring functions to optimize. While there has been multiple works on omnprediction for continuous $Y$ setting including \cite{gopalan2024omni_regression, lu2025omni_nonlinear}, these works consider Lipshitz loss functions as their class of comparator functions and proposes algorithms that achieves polynomial sample complexity.
+
+
+% Recent work has made significant progress in special cases. For binary outcomes, \cite{kleinberg2023ucal} worked on minimizing the regret with respect to a single hypothetical base rate forecaster over all proper scoring rules. \cite{isaac2025omni} proposes two-player game-based algorithms that achieve near-optimal regret guarantees while competing against all proper scoring rules. For more general settings, \cite{lu2025omni_nonlinear} \cite{gopalan2024omni_regression}
+
+
+In this paper, we develop an omniprediction framework tailored to quantile forecasting in online setting. Our objective is to minimize scores across \emph{all} scoring functions that are consistent for quantile functionals. Our main contributions are as follows:
 
 \begin{itemize}
     \item \textbf{Omniprediction for quantile functionals.} We formulate omniprediction over the class of all scoring functions that are consistent for quantiles, leveraging classical decomposition results that express such losses as weighted combinations of elementary threshold-based scores.
     
-    \item \textbf{Efficient online algorithms.} We propose computationally efficient, two-player game-based algorithms for both single and multiple quantile levels. By exploiting the structure of consistent scoring functions, we derive closed-form solutions to the underlying minimax problems, avoiding the need for generic optimization.
+    \item \textbf{Efficient online algorithms.} We propose computationally efficient, two-player game-based algorithms for both single and multiple quantile levels. By exploiting the structure of quantile-consistent scoring functions, we derive closed-form solutions to the underlying minimax problems, avoiding the need for generic optimization.
     
-    \item \textbf{Theoretical guarantees.} We establish regret bounds for our algorithms that scale as $\tilde{\mathcal{O}}(\sqrt{\log(mB)/T})$ for single quantile prediction and $\tilde{\mathcal{O}}(\sqrt{\log(mNB)/T})$ for multiple quantiles, matching standard online learning rates up to logarithmic factors.
+    \item \textbf{Theoretical guarantees.} We establish $O(1/\sqrt{T})$ regret bounds for our algorithms, matching standard online learning rates.
     
-    \item \textbf{Coherent multi-quantile prediction.} Our multiple quantile algorithm produces non-crossing quantile estimates by construction, even when base forecasts exhibit quantile crossing. We show that naively running single-quantile omniprediction independently fails to achieve this property and can be suboptimal in terms of the underlying minimax objective.
-    
-    \item \textbf{Extensions to weighted quantile losses.} We further study omniprediction under weighted sums of pinball losses and propose two algorithms with different computational and statistical trade-offs, along with a characterization of when post-processing (such as sorting) is beneficial.
+    \item \textbf{Coherent multi-quantile prediction.} Our algorithm produces non-crossing quantile estimates by construction, even when base forecasts (comparators) exhibit quantile crossing, removing the need for post-hoc sorting.
 \end{itemize}
 
-\paragraph{Related work.}
-Our work builds on and extends several lines of research. The omniprediction framework was introduced by \cite{gopalan2022omnipredictors}, who studied batch learning guarantees and connections to convex function approximation. The binary setting was further developed by \cite{isaac2025omni}, who proposed online algorithms with strong regret guarantees. In contrast, our work focuses on continuous outcomes and exploits the structure of quantile-based losses to obtain efficient algorithms.
-
-The recent work of \cite{lu2025omni_nonlinear} considers omniprediction for general non-linear losses and emphasizes sample efficiency and swap regret. Their approach is more general but does not directly leverage the structure of quantile functionals or address coherence constraints such as non-crossing. Our approach is complementary: by specializing to quantile losses, we obtain simpler algorithms with explicit solutions and additional structural guarantees.
-
-Finally, our work is closely related to the literature on proper scoring rules and consistent loss functions \cite{gneiting2011point, ehm2016binarydecomp, fissler2016multiq}, which provides the key decomposition tools that underpin our algorithms.
+% \paragraph{Related work.}
+% Finally, our work is closely related to the literature on proper scoring rules and consistent loss functions \cite{gneiting2011point, ehm2016binarydecomp, fissler2016multiq}, which provides the key decomposition tools that underpin our algorithms.
 
 \paragraph{Organization of the paper.}
-The remainder of the paper is organized as follows. In Section~\ref{sec:preliminaries}, we review background on proper scoring rules, consistent scoring functions, and the omniprediction framework. Section~\ref{sec:single_q} introduces our algorithm for single quantile omniprediction and establishes its theoretical guarantees. Section~\ref{sec:multi_q} extends the approach to multiple quantile levels and presents the corresponding algorithm and analysis. Section~\ref{sec:multi_wql} studies omniprediction for weighted quantile losses and compares alternative algorithms. Additional technical details and proofs are provided in the appendix.
+The remainder of the paper is organized as follows. In Section~\ref{sec:preliminaries}, we review background on proper scoring rules, consistent scoring functions, and two-player game based omniprediction algorithm. Section~\ref{sec:single_q} introduces our algorithm for single quantile omniprediction and establishes its theoretical guarantees. Section~\ref{sec:multi_q} extends the approach to multiple quantile levels and presents the corresponding algorithm and analysis. Section~\ref{sec:multi_wql} studies omniprediction for weighted quantile losses and compares alternative algorithms. Additional technical details and proofs are provided in the appendix.

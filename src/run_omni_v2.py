@@ -197,9 +197,9 @@ def omniprediction_multiq_online_v2(Y: pd.Series, forecasts_dict: dict, unit: in
     # Return results
     return {
         'phat_history': phat_history,
-        'w_history': w_history,
+        # 'w_history': w_history,
         'minimax_value_history': minimax_value_history, # (T,)
-        'omni_error_history': omni_error_history,   # (T, N, m) 
+        'omni_error_history': np.max(omni_error_history, axis=(1,2)),   # (T,) 
         'forecasters_preds_history': forecasters_preds_history, # (T, N, F)
         # 'forecasters_score_history': forecasters_score_history, # (T, N, m, F)
         'omni_score_trace': omni_score_trace,   # (T,)

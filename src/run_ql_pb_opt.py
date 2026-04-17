@@ -165,7 +165,9 @@ def ql_pb_opt(Y: pd.Series, forecasts_dict: dict, unit: int = 100,
         'ql_preds_history': ql_preds_history,                       # (T, N)
         'ql_v_history': ql_v_history,                               # (T, F)
 
-        
+        'pinball_omni_history': np.max(pinball_elementary_scores, axis=(1,2)),
+        'ql_omni_history': np.max(ql_elementary_scores, axis=(1,2)),
+
         'pinball_omni_score_trace': pinball_omni_score_trace,
         'ql_omni_score_trace': ql_omni_score_trace,
         'pinball_omni_score_trace_rel': pinball_omni_score_trace - best_forecaster_score_trace,
