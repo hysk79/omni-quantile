@@ -19,7 +19,7 @@ We aim to come up with $\{\hat{p}_n(t)\}_{n=1}^N$ that minimizes the following o
 
 
 
-\subsection{Hedge algorithm on each quantile level}
+\subsection{Hedge algorithm on each quantile level} \label{subsec:hedge_wql}
 In this subsection, we introduce the first algorithm that essentially runs Hedge algorithm on each quantile level then provide the omniprediction error bound for this algorithm. We denote the output from Algorithm \ref{alg:wql_hedge} by $\{\hat{p}_n^H(t)\}_{n=1}^N$ where the superscript $H$ denotes it is from the Hedge algorithm.
  
 \begin{algorithm}[h]
@@ -60,7 +60,7 @@ where the first inequality is due to convexity of $\rho_\tau$ and the second ine
 
 
 
-\subsection{Two-player game based algorithm}
+\subsection{Two-player game based algorithm} \label{subsec:twoplayer_wql}
 In this subsection, we introduce the second algorithm that is based on two-player game that is similar to Algorithm \ref{alg:omni-twoplayer_online_multi_q} in Section \ref{sec:multi_q} then provide the omniprediction error bound for this algorithm. In the process, we prove that the output from this algorithm does not exhibit quantile crossing. We denote the output from Algorithm \ref{alg:omni-twoplayer_online_wql} by $\{\hat{p}^G_n(t)\}_{n=1}^N$ where the superscript $G$ denotes it is from the two-player Game based algorithm.
 
 % Algorithm \ref{alg:omni-twoplayer_online_wql} below outputs $\{\hat{p}^G_n(t)\}_{n=1}^N$ as $\{\tau_n\}_{n=1}^N$-level quantile estimates at time $t$, where the superscript $G$ denotes it is from the two-player Game based algorithm.
