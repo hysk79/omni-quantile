@@ -149,7 +149,7 @@ Here, the oracle bettor is one who bets if and only if $y > \theta$, earning $\r
 
 
 \subsection{Discretization} \label{subsec:discretization}
-This subsection presents the discretization of predictions and forecasts, which allows no approximation error when approximating any element in $S_\alpha$ as a weighted sum of elementary scores, where $S_\alpha$ is the class of scoring functions with representation \eqref{eq:elem_score_q} with $H(\R)=1$. Without loss of generality, assume $Y_t, f(t) \in [0,1]$ for all $t \in [T]$, as the construction extends to any bounded interval $[-B_\ell, B_u]$ via rescaling. We consider the grid $\{0, \frac{1}{m}, \ldots, 1\}$ and define $\theta_i = \frac{i}{m} - \frac{1}{2m}$ for $i \in [m]$. We abbreviate $S_{\alpha, \theta_i}$ as $S_{\alpha, i}$.
+This subsection presents the discretization of predictions and forecasts, which allows no approximation error when approximating any element in $S_\alpha$ as a weighted sum of elementary scores, where $S_\alpha$ is the class of scoring functions with representation \eqref{eq:elem_score_q} with $H(\R)=1$. Without loss of generality, assume $Y_t, f(t) \in [0,1]$ for all $t \in [T]$, as the construction extends to any bounded interval $[-B_\ell, B_u]$ via rescaling. We consider the grid $\{0, \frac{1}{m}, \ldots, 1\}$ and define $\theta_i = \frac{i}{m} - \frac{1}{2m}$ for $i \in [m]$. We abbreviate $S_{\alpha, \theta_i}$ as $S_{\alpha, i}$. Figure \ref{fig:discretization} visualizes the discretization on the real line.
 
 
 \begin{figure}[h]
@@ -171,8 +171,10 @@ This subsection presents the discretization of predictions and forecasts, which 
   \draw (10, 0) node[below=4pt] {$\cdots$};
 
 \end{tikzpicture}
-\caption{Order of variables on 1D line.}
+\caption{Visualization of the discretization on the real line. Ground truth $Y_t$, forecasts $f(t)$ takes values in $\{0, 1/m, ..., 1\}$, and $\theta_i$ are between the grid points.} \label{fig:discretization}
 \end{figure}
+
+The following lemma shows that, to control regret uniformly over the class $S_\alpha$, it suffices to control regret on a finite collection of elementary scores $\{S_{\alpha,i}\}_{i=1}^m$. This reduction allows us to replace the original omniprediction objective over $S_\alpha$ with a tractable finite-dimensional problem. Proof is deferred to Appendix \ref{pf:discretize_single_q}.
 
 \begin{lemma}[Discretizing all consistent losses] \label{lem:discretize_single_q}
   For any $\alpha \in (0,1) $, let $S_\alpha$ denote the class of scoring functions with representation \eqref{eq:elem_score_q} with $H([0,1]) \leq 1$.
@@ -182,24 +184,7 @@ This subsection presents the discretization of predictions and forecasts, which 
 \sup_{f\in\cf, i\in[m]} \E[S_{\alpha,i}(p(X),Y)] - \E[S_{\alpha,i}(f(X),Y)] 
 \]
 \end{lemma}
-\begin{proof}
-Let $\theta_{i^*} \in \{\theta_i\}_{i=1}^{m}$ be the closest value  from $\theta$, where the ties are broken by rounding up. Observe that $\one(\theta < a) = \one(\theta_{i^*} < a)$ for $a \in \{\frac{j}{m}\}_{j=0}^m$. This gives 
-\begin{align*}
-S_{\alpha, \theta}(x,y) & = (\one(y<x)-\alpha)(\one(\theta<x)-\one(\theta<y)) \\
-& = (\one(y<x)-\alpha)(\one(\theta_{i^*}<x)-\one(\theta_{i^*}<y)) = S_{\alpha, {i^*}}(x,y),
-\end{align*}
-for $x,y \in \{\frac{j}{m}\}_{j=0}^m$ and $\theta \in [0,1)$ and $S_{\alpha, 1}(x,y) = 0$. Using this relationship, we obtain
-\begin{align*}
-& \sup_{f\in\cf, S\in S_\alpha} \E[S(p(X),Y)] - \E[S(f(X),Y)] \\
-&= \sup_{f\in\cf, H:\text{pos. measure}} \E\left[\int_0^1 S_{\alpha, \theta}(p(X), Y) - S_{\alpha, \theta}(f(X),Y) dH(\theta) \right] \\
-&= \sup_{f\in\cf, H:\text{pos. measure}} \int_0^1\E[S_{\alpha, \theta}(p(X), Y)] - \E[S_{\alpha, \theta}(f(X),Y)] dH(\theta)\\
-&= \sup_{f\in\cf, H:\text{pos. measure}} \sum_{i=1}^{m} \E[S_{{\alpha, i}}(p(X), Y)] - \E[S_{{\alpha, i}}(f(X),Y)] \, 
-H\left(\theta \in \left[\theta_i-\frac{1}{2m}, \theta_i +\frac{1}{2m}\right)\right) \\
-&\leq \sup_{f\in\cf, i\in[m]} \E[S_{{\alpha, i}}(p(X), Y)] - \E[S_{{\alpha, i}}(f(X),Y)] \, H([0,1])
-\end{align*}
-Note that $S_{\alpha, \theta} \equiv 0$ for $\theta \notin [0,1]$ if $X,Y \in [0,1]$. 
-Since $S_{\alpha, i} \in S_\alpha$, the other direction of inequality follows, resulting in equality.
-\end{proof}
+
 
 
 
@@ -231,132 +216,29 @@ This subsection introduces the omniprediction algorithm that optimizes the losse
 
 
 
-The first step of the algorithm is to produce a prediction at time $t$. The prediction $\hat{P}_t$ is computed as the minimax solution to the following program:
-\[
-  \hat{P}_t = \arg\min_{P \in \Delta_m} \max_{P_y \in \Delta_m} 
-  \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}\E_{p\sim P, Y \sim P_y}[S_{\alpha,i}(p,Y) - S_{\alpha,i}(f_b(t),Y)].
-\]
+The first part of the algorithm is to produce a prediction at time $t$. Letting $\Delta_m$ denote the set of probability distributions over $\{0, \frac{1}{m}, \frac{2}{m}, ...,1\}$, the prediction $\hat{P}_t$ is computed as the minimax solution to the following program:
+\begin{align}\label{eq:minimax_q}
+  \hat{P}_t = \arg\min_{P \in \Delta_m} \max_{P_y \in \Delta_m} \sum_{i=1}^{m} \sum_{b=1}^B w_{ib} \,\E_{p\sim P, Y \sim P_y}[S_{\alpha,i}(p,Y) - S_{\alpha,i}(f_b(t),Y)] 
+\end{align}
 % to obtain a single quantile level forecast version of minimax program solution \eqref{eq:omni-twoplayer-minimax} in Algorithm \ref{alg:omni-twoplayer}.
 
 
 % Now, we denote forecasts $\{\hat{f}_{\theta_i}\}_{i=0}^{m-1}$ be the forecast that minimizes the losses $\{S_{\alpha, \theta_i}\}_{i=0}^{m-1}$.
-\subsubsection{Minimax solution for single quantile level omniprediction}
-Letting $\Delta_m$ denote the set of probability distributions over $\{0, \frac{1}{m}, \frac{2}{m}, ...,1\}$, the following holds due to von Neumann's minimax theorem. Note that the expectation is linear in both $p$ and $Y$ and that $\Delta_m$ is compact and convex. First, we prove that the value of the minimax program is non-positive.
 
-\begin{lemma}\label{lem:minimax_single_q_neg}
-\[
-\min_{P \in \Delta_m} \max_{P_y \in \Delta_m} \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}\E_{p\sim P, Y \sim P_y}[S_{\alpha,i}(p,Y) - S_{\alpha,i}(f_b(t),Y)] 
-\leq 0
-\]
-\end{lemma}
-\begin{proof}
-From von Neumann's minimax theorem, we have 
-\begin{align*}
-\min_{P \in \Delta_m} \max_{P_y \in \Delta_m} & \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}\E_{p\sim P, Y \sim P_y}[S_{\alpha,i}(p,Y) - S_{\alpha,i}(f_b(t),Y)] \\
-& = \max_{P_y \in \Delta_m} \min_{P \in \Delta_m}  \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}\E_{p\sim P, Y \sim P_y}[S_{\alpha,i}(p,Y) - S_{\alpha,i}(f_b(t),Y)].
-\end{align*}
-Since $S_{\alpha,i}$ is consistent for the quantile functional at level $\alpha$,
-\[
-\min_{P\in \Delta_m}\E_{p\sim P, Y \sim P_y}[S_{\alpha,i}(P,Y) - S_{\alpha,i}(f_b(t),Y)] 
-\leq 
-\E_{Y \sim P_y}[S_{\alpha,i}(\delta_{q_\alpha(P_y)},Y) - S_{\alpha,i}(f_b(t),Y)] 
-\leq 0.
-\]
-Taking $\max_{P_y \in \Delta_m}$ on both sides concludes the proof.
-\end{proof}
+Following proposition provides a closed form solution to the minimax program \eqref{eq:minimax_q}, which is incorporated in Algorithm \ref{alg:omni-twoplayer_online_q}, by utilizing the structure of $S_{\alpha, i}$ losses. The proof is deferred to Appendix \ref{pf:minimax_sol_single_q}.
 
-The last component is a shortcut to compute the minimax solution by utilizing the structure of $S_{\alpha, i}$ losses.
-\begin{align}\label{eq:minimax_q}
-\hat{P}_t = \arg\min_{P \in \Delta_m} \max_{P_y \in \Delta_m} \sum_{i=1}^{m} \sum_{b=1}^B w_{ib} \,\E_{p\sim P, Y \sim P_y}[S_{\alpha,i}(p,Y) - S_{\alpha,i}(f_b(t),Y)] 
-\end{align}
-
-
-\begin{lemma} \label{lem:minimax_sol_single_q}\todo{To add special care on $k^*=m$ case} Define $B_k := \sum_{i=1}^{k} \sum_{b=1}^B w_{ib} - \sum_{i=1}^{m} \sum_{b=1}^B w_{ib} \one(\theta_i < f_b(t))$ and let $k^* = \max\{k: B_k \leq 0\}$. Note that $B_{k^*} \leq 0$ and $B_{k^*+1}>0$. Then, 
+\begin{prop} \label{prop:minimax_sol_single_q}\todo{To add special care on $k^*=m$ case} Define $B_k := \sum_{i=1}^{k} \sum_{b=1}^B w_{ib} - \sum_{i=1}^{m} \sum_{b=1}^B w_{ib} \one(\theta_i < f_b(t))$ and let $k^* = \max\{k: B_k \leq 0\}$. Note that $B_{k^*} \leq 0$ and $B_{k^*+1}>0$. Then, 
 \begin{align*}
 P^* = \frac{B_{k^*+1}}{B_{k^*+1} + |B_{k^*}|}\delta_{\frac{k^*}{m}} + \frac{|B_{k^*}|}{B_{k^*+1} + |B_{k^*}|}\delta_{\frac{k^*+1}{m}} 
 \quad\text{and}\quad
 P_y^* = \alpha \delta_0 + (1-\alpha) \delta_1 
 \end{align*}
 solves equation \eqref{eq:minimax_q}.
-\end{lemma}
+\end{prop}
 
-\begin{proof}
-Let $O(P,P_y) := \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}\E_{p\sim P, Y \sim P_y}[S_{\alpha,i}(p,Y) - S_{\alpha,i}(f_b(t),Y)]$.
-It suffices to prove that $O(P^*, P_y^*) = \max_{P_y} O(P^*, P_y) = \min_P O(P, P_y^*)$. We start with decomposing $O(P, P_y)$:
-\begin{align}
-  \label{eq:oppy_q}
-  O(P, P_y)
-  &= \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}
-  \mathbb{E}_{p\sim P,\, Y \sim P_y} \Big[
-  (\one(Y<p)-\alpha)\big(\one(\theta_i<p)-\one(\theta_i<Y)\big) \nonumber \\
-  &\qquad\qquad
-  - (\one(Y<f_b(t))-\alpha)\big(\one(\theta_i<f_b(t))-\one(\theta_i<Y)\big)
-  \Big] \nonumber \\
-  &= \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}
-  \mathbb{E}_{p\sim P,\, Y \sim P_y} \Big[
-  \one(Y, \theta_i < p)
-  - \alpha \one(\theta_i<p)
-  - \one(\theta_i<Y<p) \nonumber \\
-  &\qquad\qquad
-  - \one(Y, \theta_i < f_r(t))
-  + \alpha \one(\theta_i<f_r(t))
-  + \one(\theta_i<Y<f_r(t))
-  \Big] \nonumber \\
-  &= \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}
-  \mathbb{E}_{p\sim P,\, Y \sim P_y} \Big[
-  \one(Y \le \theta_i < p)
-  - \alpha \one(\theta_i<p)
-  - \one(Y \le \theta_i < f_b(t))
-  \Big] + C_\alpha.
-  \end{align}
-where $C_\alpha=\alpha \sum_{i=1}^{m} \sum_{b=1}^B w_{ib} \one(\theta_i < f_b(t))$ which does not depend on $P$ or $P_y$.
+Now, we present the omniprediction error bound for Algorithm \ref{alg:omni-twoplayer_online_q}. The proof is deferred to Appendix \ref{pf:omni-twoplayer_online_q}.
 
-\smallskip
-We first prove $O(P^*, P_y^*) = \max_{P_y} O(P^*, P_y)$. Let $P_y(\frac{j}{m})=p_{yj}$ for $j=0,...,m$. 
-%Define $B-$dimensional vectors $w_i := (w_{i1}, w_{i2}, ..., w_{iB})$, $\one_i(t) := \{\indi{\theta_i < f_b(t)}\}_{b=1}^B$ and $\one_B := (1,..,1)$ for $i \in [m]$. 
-Using the fact that $\one(\theta_i < k/m) = \one(i \leq k)$, $O(P^*, P_y)$ is rephrased as the following:
-\begin{align}
-O(P^*, P_y) 
-=& \E_{p\sim P^*} \left[\sum_{j=0}^m p_{yj} 
-\left(\sum_{i=j+1}^{m} \sum_{b=1}^B w_{ib} \left(\one(\theta_i < p) - \one(\theta_i < f_b(t))\right) \right) \right] + C(P^*) \nonumber\\
-=& \frac{B_{k^*+1}}{B_{k^*+1} + |B_{k^*}|} \left[\sum_{j=0}^m p_{yj} 
-\left(\sum_{i=j+1}^{k^*} \sum_{b=1}^B w_{ib} - \sum_{i=j+1}^{m} \sum_{b=1}^B w_{ib} \one(\theta_i < f_b(t)) \right) \right] \nonumber\\
-&+ \frac{|B_{k^*}|}{B_{k^*+1} + |B_{k^*}|} \left[\sum_{j=0}^m p_{yj} 
-\left(\sum_{i=j+1}^{k^*+1} \sum_{b=1}^B w_{ib} - \sum_{i=j+1}^{m} \sum_{b=1}^B w_{ib} \one(\theta_i < f_b(t)) \right) \right] + C(P^*) \label{eq:opstarpy_q},
-\end{align}
-where $C(P^*)$ is a value that does not depend on $P_y$ and we ignore the term hereafter. % We abbreviate $\sum_{b=1}^F w_{ib}$ as $w_i$ and $\sum_{b=1}^F w_{ib} \one(\theta_i < f_b(t))$ as $(wf)_i$.
-
-Now observe that $A_k^j := \sum_{i=j+1}^{k} \sum_{b=1}^B w_{ib} - \sum_{i=j+1}^{m} \sum_{b=1}^B w_{ib} \one(\theta_i < f_b(t))$ is non-increasing on $j\leq k$ and non-decreasing on $j \in [k, m)$ since $\one(\theta_i < f_b(t))$ is $0$ or $1$. Also note that $A_k^0 \geq A_k^{m-1}$ if $k=m$ and $A_k^m = 0 \geq A_k^{m-1}$ if $k \neq m$. Therefore, $A_k^j$ achieves maximum at $j=0$ or $j=m$:
-\begin{align*}
-& \max_{\sum_j{p_{yj}}=1}\sum_{j=0}^{m} p_{yj} \left(\sum_{i=j+1}^{k} \sum_{b=1}^B w_{ib} - \sum_{i=j+1}^{m} \sum_{b=1}^B w_{ib} \one(\theta_i < f_b(t))\right) \\
-&= \max_{p_{y0}+p_{ym}=1} p_{y0}\left(\sum_{i=1}^{k} \sum_{b=1}^B w_{ib} - \sum_{i=1}^{m} \sum_{b=1}^B w_{ib} \one(\theta_i < f_b(t))\right) + p_{ym}\cdot 0 
-= \max_{p_{y0}+p_{ym}=1} p_{y0} \cdot B_k + p_{ym} \cdot 0.% = \max\{A_k^0, 0\} = \max\{B_k, 0\}
-\end{align*}
-
-Putting this together with equation \eqref{eq:opstarpy_q} and the fact that $B_{k^*}\leq 0$ gives
-\begin{align*}
-\max_{P_y}O(P^*, P_y) = \max_{p_{y0}+p_{ym}=1} p_{y0} \left(\frac{B_{k^*+1}}{B_{k^*+1} + |B_{k^*}|} \cdot B_{k*} + \frac{|B_{k^*}|}{B_{k^*+1} + |B_{k^*}|} \cdot B_{k^*+1}\right) + p_{ym}\cdot 0 + C(P^*),
-\end{align*}
-which is achieved by $P_y^*$ since $P_y^*$ only puts mass on $j=0, m$. This proves that $O(P^*, P_y^*) = \max_{P_y} O(P^*, P_y)$.
-
-\smallskip
-Next, we prove $O(P^*, P_y^*) = \min_P O(P, P_y^*)$. The decomposition \eqref{eq:oppy_q} of $O(P, P_y)$ reduces to
-\begin{align*}
-& O(P, P_y^*)  \\ 
-&= \alpha \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}\E_{p\sim P}[(1-\alpha)\one(\theta_i < p) - \one(\theta_i < f_b(t))] + 
-(1-\alpha) \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}\E_{p\sim P}[-\alpha\one(\theta_i < p)] + C_\alpha \\
-&= -\alpha \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}\one(\theta_i < f_b(t)) + C = 0,
-\end{align*}
-which does not depend on $P$. Thus, $O(P^*, P_y^*) = \min_P O(P, P_y^*)$.
-\end{proof}
-
-
-
-
-\subsubsection{Omniprediction error bound} 
-Lastly, we present the omniprediction error bound for Algorithm \ref{alg:omni-twoplayer_online_q}.
-\begin{theorem}
-  \label{thm:omni-twoplayer_online_q}
+\begin{theorem} \label{thm:omni-twoplayer_online_q}
   For a quantile level $\alpha \in (0,1)$, let $S_\alpha$ denote the class of scoring functions with representation \eqref{eq:elem_score_q} with $H(\R) = 1$ (the set of \textit{all} scoring functions that are consistent for the $\alpha$-level quantile functional under mild regularity conditions). Consider base forecasters $\{f_b\}_{b=1}^B$ that provide $\alpha$-level quantile forecasts $f_b(t)$ at each time step $t \in [T]$. With the target values $Y_t$, forecaster predictions $f_b(t)$ for $t \in [T], b \in [B]$ each taking values in a uniform grid of size $m$, and the learning rate $\eta = \sqrt{\frac{\log mB}{T}}$, the output $\hat{P}_t$ from Algorithm \ref{alg:omni-twoplayer_online_q} achieves the following omniprediction error:
   \begin{align*}
   \sup_{S \in S_\alpha,\, b \in [B]} \frac{1}{T} \sum_{t=1}^T \E_{p \sim \hat{P}(t)} [S(p, Y_t)] - \E[S(f_b(t), Y_t)]
@@ -364,22 +246,3 @@ Lastly, we present the omniprediction error bound for Algorithm \ref{alg:omni-tw
   \end{align*}
 \end{theorem}
 
-
-\begin{proof}
-Observe that $S_{\alpha, i}(x,y) \in \{0, \alpha, 1-\alpha\}$ and $|S_{\alpha, i}(x_1,y_1) - S_{\alpha, i}(x_2,y_2)| \leq 1$. Without loss of generality, we assume that $Y_t, f_b(t) \in \{0, \frac{1}{m}, 1\}$ for all $t \in [T], b \in [B]$, as this construction extends to any bounded interval $[-B_\ell, B_u]$ via rescaling. Also note that $S_{\alpha, \theta}(p, Y_t)$ or $S_{\alpha, \theta}(f_b(t), Y_t)$ with $\theta \notin [-B_\ell, B_u]$ is always zero for $p \in [-B_\ell, B_u]$. Therefore non-negative mass of $H$ on $\R \backslash [-B_\ell, B_u]$ is irrelevant to the omniprediction error.
-
-Regret bound of hedge algorithm (Theorem \ref{appthm:hedge_regret}) gives the following:
-\begin{align}
-  \max_{i \in [m], b \in [B]} \frac{1}{T} \sum_{t=1}^T \sum_{b=1}^B 
-  & \E_{p\sim \hat{P}(t)}\left[ S_{\alpha, i}(p, Y_t) - S_{\alpha, i}(f_b(t), Y_t) \right] \nonumber\\
-  & \leq \frac{1}{T} \sum_{t=1}^T \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}(t) \, \E_{p\sim \hat{P}(t)}\left[ S_{\alpha, i}(p, Y_t) - S_{\alpha, i}(f_b(t), Y_t) \right] + \eta + \frac{\log mB}{T\eta} \label{ieq:hedge_w_update}
-\end{align}
-
-Putting these together with previous lemmas, we have:
-  \begin{align*}
-    & \sup_{S \in S_\alpha,\, f \in \cf} \frac{1}{T} \sum_{t=1}^T \E_{p \sim \hat{P}(t)} [S(p, Y_t)] - S(f(t), Y_t) \\
-    & \underset{\text{Lem. } \ref{lem:discretize_single_q}}{=} \sup_{i \in [m], b \in [B]} \frac{1}{T} \sum_{t=1}^T \E_{p \sim \hat{P}(t)} [S_{\alpha, i}(p, Y_t)] - S_{\alpha, i}(f(t), Y_t) \\
-    & \underset{Ieq. \eqref{ieq:hedge_w_update}}{\leq} \frac{1}{T} \sum_{t=1}^T \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}(t) \, \E_{p\sim \hat{P}(t)}\left[ S_{\alpha, i}(p, Y_t) - S_{\alpha, i}(f_b(t), Y_t) \right] + 2\left(\sqrt{\frac{\log mB}{T}}\right) \\
-    & \underset{\text{Lem. } \ref{lem:minimax_single_q_neg}}{\leq} 2\left(\sqrt{\frac{\log mB}{T}}\right).
-  \end{align*}
-\end{proof} 

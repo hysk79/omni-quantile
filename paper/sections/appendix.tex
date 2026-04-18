@@ -1,3 +1,409 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% NEW SECTION
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Proofs for Section \ref{sec:single_q}} 
+
+\subsection{Proof of Lemma \ref{lem:discretize_single_q}} \label{pf:discretize_single_q}
+\begin{proof}
+  Let $\theta_{i^*} \in \{\theta_i\}_{i=1}^{m}$ be the closest value  from $\theta$, where the ties are broken by rounding up. Observe that $\one(\theta < a) = \one(\theta_{i^*} < a)$ for $a \in \{\frac{j}{m}\}_{j=0}^m$. This gives 
+  \begin{align*}
+  S_{\alpha, \theta}(x,y) & = (\one(y<x)-\alpha)(\one(\theta<x)-\one(\theta<y)) \\
+  & = (\one(y<x)-\alpha)(\one(\theta_{i^*}<x)-\one(\theta_{i^*}<y)) = S_{\alpha, {i^*}}(x,y),
+  \end{align*}
+  for $x,y \in \{\frac{j}{m}\}_{j=0}^m$ and $\theta \in [0,1)$ and $S_{\alpha, 1}(x,y) = 0$. Using this relationship, we obtain
+  \begin{align*}
+  & \sup_{f\in\cf, S\in S_\alpha} \E[S(p(X),Y)] - \E[S(f(X),Y)] \\
+  &= \sup_{f\in\cf, H:\text{pos. measure}} \E\left[\int_0^1 S_{\alpha, \theta}(p(X), Y) - S_{\alpha, \theta}(f(X),Y) dH(\theta) \right] \\
+  &= \sup_{f\in\cf, H:\text{pos. measure}} \int_0^1\E[S_{\alpha, \theta}(p(X), Y)] - \E[S_{\alpha, \theta}(f(X),Y)] dH(\theta)\\
+  &= \sup_{f\in\cf, H:\text{pos. measure}} \sum_{i=1}^{m} \E[S_{{\alpha, i}}(p(X), Y)] - \E[S_{{\alpha, i}}(f(X),Y)] \, 
+  H\left(\theta \in \left[\theta_i-\frac{1}{2m}, \theta_i +\frac{1}{2m}\right)\right) \\
+  &\leq \sup_{f\in\cf, i\in[m]} \E[S_{{\alpha, i}}(p(X), Y)] - \E[S_{{\alpha, i}}(f(X),Y)] \, H([0,1])
+  \end{align*}
+  Note that $S_{\alpha, \theta} \equiv 0$ for $\theta \notin [0,1]$ if $X,Y \in [0,1]$. 
+  Since $S_{\alpha, i} \in S_\alpha$, the other direction of inequality follows, resulting in equality.
+\end{proof}
+
+
+\subsection{Proof of Lemma \ref{prop:minimax_sol_single_q}} \label{pf:minimax_sol_single_q}
+
+\begin{proof}
+  Let $O(P,P_y) := \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}\E_{p\sim P, Y \sim P_y}[S_{\alpha,i}(p,Y) - S_{\alpha,i}(f_b(t),Y)]$.
+  It suffices to prove that $O(P^*, P_y^*) = \max_{P_y} O(P^*, P_y) = \min_P O(P, P_y^*)$. We start with decomposing $O(P, P_y)$:
+  \begin{align}
+    \label{eq:oppy_q}
+    O(P, P_y)
+    &= \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}
+    \mathbb{E}_{p\sim P,\, Y \sim P_y} \Big[
+    (\one(Y<p)-\alpha)\big(\one(\theta_i<p)-\one(\theta_i<Y)\big) \nonumber \\
+    &\qquad\qquad
+    - (\one(Y<f_b(t))-\alpha)\big(\one(\theta_i<f_b(t))-\one(\theta_i<Y)\big)
+    \Big] \nonumber \\
+    &= \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}
+    \mathbb{E}_{p\sim P,\, Y \sim P_y} \Big[
+    \one(Y, \theta_i < p)
+    - \alpha \one(\theta_i<p)
+    - \one(\theta_i<Y<p) \nonumber \\
+    &\qquad\qquad
+    - \one(Y, \theta_i < f_r(t))
+    + \alpha \one(\theta_i<f_r(t))
+    + \one(\theta_i<Y<f_r(t))
+    \Big] \nonumber \\
+    &= \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}
+    \mathbb{E}_{p\sim P,\, Y \sim P_y} \Big[
+    \one(Y \le \theta_i < p)
+    - \alpha \one(\theta_i<p)
+    - \one(Y \le \theta_i < f_b(t))
+    \Big] + C_\alpha.
+    \end{align}
+  where $C_\alpha=\alpha \sum_{i=1}^{m} \sum_{b=1}^B w_{ib} \one(\theta_i < f_b(t))$ which does not depend on $P$ or $P_y$.
+  
+  \smallskip
+  We first prove $O(P^*, P_y^*) = \max_{P_y} O(P^*, P_y)$. Let $P_y(\frac{j}{m})=p_{yj}$ for $j=0,...,m$. 
+  %Define $B-$dimensional vectors $w_i := (w_{i1}, w_{i2}, ..., w_{iB})$, $\one_i(t) := \{\indi{\theta_i < f_b(t)}\}_{b=1}^B$ and $\one_B := (1,..,1)$ for $i \in [m]$. 
+  Using the fact that $\one(\theta_i < k/m) = \one(i \leq k)$, $O(P^*, P_y)$ is rephrased as the following:
+  \begin{align}
+  O(P^*, P_y) 
+  =& \E_{p\sim P^*} \left[\sum_{j=0}^m p_{yj} 
+  \left(\sum_{i=j+1}^{m} \sum_{b=1}^B w_{ib} \left(\one(\theta_i < p) - \one(\theta_i < f_b(t))\right) \right) \right] + C(P^*) \nonumber\\
+  =& \frac{B_{k^*+1}}{B_{k^*+1} + |B_{k^*}|} \left[\sum_{j=0}^m p_{yj} 
+  \left(\sum_{i=j+1}^{k^*} \sum_{b=1}^B w_{ib} - \sum_{i=j+1}^{m} \sum_{b=1}^B w_{ib} \one(\theta_i < f_b(t)) \right) \right] \nonumber\\
+  &+ \frac{|B_{k^*}|}{B_{k^*+1} + |B_{k^*}|} \left[\sum_{j=0}^m p_{yj} 
+  \left(\sum_{i=j+1}^{k^*+1} \sum_{b=1}^B w_{ib} - \sum_{i=j+1}^{m} \sum_{b=1}^B w_{ib} \one(\theta_i < f_b(t)) \right) \right] + C(P^*) \label{eq:opstarpy_q},
+  \end{align}
+  where $C(P^*)$ is a value that does not depend on $P_y$ and we ignore the term hereafter. % We abbreviate $\sum_{b=1}^F w_{ib}$ as $w_i$ and $\sum_{b=1}^F w_{ib} \one(\theta_i < f_b(t))$ as $(wf)_i$.
+  
+  Now observe that $A_k^j := \sum_{i=j+1}^{k} \sum_{b=1}^B w_{ib} - \sum_{i=j+1}^{m} \sum_{b=1}^B w_{ib} \one(\theta_i < f_b(t))$ is non-increasing on $j\leq k$ and non-decreasing on $j \in [k, m)$ since $\one(\theta_i < f_b(t))$ is $0$ or $1$. Also note that $A_k^0 \geq A_k^{m-1}$ if $k=m$ and $A_k^m = 0 \geq A_k^{m-1}$ if $k \neq m$. Therefore, $A_k^j$ achieves maximum at $j=0$ or $j=m$:
+  \begin{align*}
+  & \max_{\sum_j{p_{yj}}=1}\sum_{j=0}^{m} p_{yj} \left(\sum_{i=j+1}^{k} \sum_{b=1}^B w_{ib} - \sum_{i=j+1}^{m} \sum_{b=1}^B w_{ib} \one(\theta_i < f_b(t))\right) \\
+  &= \max_{p_{y0}+p_{ym}=1} p_{y0}\left(\sum_{i=1}^{k} \sum_{b=1}^B w_{ib} - \sum_{i=1}^{m} \sum_{b=1}^B w_{ib} \one(\theta_i < f_b(t))\right) + p_{ym}\cdot 0 
+  = \max_{p_{y0}+p_{ym}=1} p_{y0} \cdot B_k + p_{ym} \cdot 0.% = \max\{A_k^0, 0\} = \max\{B_k, 0\}
+  \end{align*}
+  
+  Putting this together with equation \eqref{eq:opstarpy_q} and the fact that $B_{k^*}\leq 0$ gives
+  \begin{align*}
+  \max_{P_y}O(P^*, P_y) = \max_{p_{y0}+p_{ym}=1} p_{y0} \left(\frac{B_{k^*+1}}{B_{k^*+1} + |B_{k^*}|} \cdot B_{k*} + \frac{|B_{k^*}|}{B_{k^*+1} + |B_{k^*}|} \cdot B_{k^*+1}\right) + p_{ym}\cdot 0 + C(P^*),
+  \end{align*}
+  which is achieved by $P_y^*$ since $P_y^*$ only puts mass on $j=0, m$. This proves that $O(P^*, P_y^*) = \max_{P_y} O(P^*, P_y)$.
+  
+  \smallskip
+  Next, we prove $O(P^*, P_y^*) = \min_P O(P, P_y^*)$. The decomposition \eqref{eq:oppy_q} of $O(P, P_y)$ reduces to
+  \begin{align*}
+  & O(P, P_y^*)  \\ 
+  &= \alpha \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}\E_{p\sim P}[(1-\alpha)\one(\theta_i < p) - \one(\theta_i < f_b(t))] + 
+  (1-\alpha) \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}\E_{p\sim P}[-\alpha\one(\theta_i < p)] + C_\alpha \\
+  &= -\alpha \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}\one(\theta_i < f_b(t)) + C = 0,
+  \end{align*}
+  which does not depend on $P$. Thus, $O(P^*, P_y^*) = \min_P O(P, P_y^*)$.
+\end{proof}
+
+
+\subsection{Proof of Theorem \ref{thm:omni-twoplayer_online_q}} \label{pf:omni-twoplayer_online_q}
+
+We first prove that the value of the minimax program \eqref{eq:minimax_q} is non-positive. It is mainly due to von Neumann's minimax theorem. Note that the expectation is linear in both $p$ and $Y$ and that $\Delta_m$ is compact and convex.
+
+\begin{lemma}\label{lem:minimax_single_q_neg}
+  \[
+  \min_{P \in \Delta_m} \max_{P_y \in \Delta_m} \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}\E_{p\sim P, Y \sim P_y}[S_{\alpha,i}(p,Y) - S_{\alpha,i}(f_b(t),Y)] 
+  \leq 0
+  \]
+  \end{lemma}
+  \begin{proof}
+  From von Neumann's minimax theorem, we have 
+  \begin{align*}
+  \min_{P \in \Delta_m} \max_{P_y \in \Delta_m} & \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}\E_{p\sim P, Y \sim P_y}[S_{\alpha,i}(p,Y) - S_{\alpha,i}(f_b(t),Y)] \\
+  & = \max_{P_y \in \Delta_m} \min_{P \in \Delta_m}  \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}\E_{p\sim P, Y \sim P_y}[S_{\alpha,i}(p,Y) - S_{\alpha,i}(f_b(t),Y)].
+  \end{align*}
+  Since $S_{\alpha,i}$ is consistent for the quantile functional at level $\alpha$,
+  \[
+  \min_{P\in \Delta_m}\E_{p\sim P, Y \sim P_y}[S_{\alpha,i}(P,Y) - S_{\alpha,i}(f_b(t),Y)] 
+  \leq 
+  \E_{Y \sim P_y}[S_{\alpha,i}(\delta_{q_\alpha(P_y)},Y) - S_{\alpha,i}(f_b(t),Y)] 
+  \leq 0.
+  \]
+  Taking $\max_{P_y \in \Delta_m}$ on both sides concludes the proof.
+\end{proof}
+
+
+
+\begin{proof}[Proof of Theorem \ref{thm:omni-twoplayer_online_q}]
+Observe that $S_{\alpha, i}(x,y) \in \{0, \alpha, 1-\alpha\}$ and $|S_{\alpha, i}(x_1,y_1) - S_{\alpha, i}(x_2,y_2)| \leq 1$. Without loss of generality, we assume that $Y_t, f_b(t) \in \{0, \frac{1}{m}, 1\}$ for all $t \in [T], b \in [B]$, as this construction extends to any bounded interval $[-B_\ell, B_u]$ via rescaling. Also note that $S_{\alpha, \theta}(p, Y_t)$ or $S_{\alpha, \theta}(f_b(t), Y_t)$ with $\theta \notin [-B_\ell, B_u]$ is always zero for $p \in [-B_\ell, B_u]$. Therefore non-negative mass of $H$ on $\R \backslash [-B_\ell, B_u]$ is irrelevant to the omniprediction error.
+
+Regret bound of hedge algorithm (Theorem \ref{appthm:hedge_regret}) gives the following:
+\begin{align}
+  \max_{i \in [m], b \in [B]} \frac{1}{T} \sum_{t=1}^T \sum_{b=1}^B 
+  & \E_{p\sim \hat{P}(t)}\left[ S_{\alpha, i}(p, Y_t) - S_{\alpha, i}(f_b(t), Y_t) \right] \nonumber\\
+  & \leq \frac{1}{T} \sum_{t=1}^T \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}(t) \, \E_{p\sim \hat{P}(t)}\left[ S_{\alpha, i}(p, Y_t) - S_{\alpha, i}(f_b(t), Y_t) \right] + \eta + \frac{\log mB}{T\eta} \label{ieq:hedge_w_update}
+\end{align}
+
+Putting these together with previous lemmas, we have:
+\begin{align*}
+  & \sup_{S \in S_\alpha,\, f \in \cf} \frac{1}{T} \sum_{t=1}^T \E_{p \sim \hat{P}(t)} [S(p, Y_t)] - S(f(t), Y_t) \\
+  & \underset{\text{Lem. } \ref{lem:discretize_single_q}}{=} \sup_{i \in [m], b \in [B]} \frac{1}{T} \sum_{t=1}^T \E_{p \sim \hat{P}(t)} [S_{\alpha, i}(p, Y_t)] - S_{\alpha, i}(f(t), Y_t) \\
+  & \underset{Ieq. \eqref{ieq:hedge_w_update}}{\leq} \frac{1}{T} \sum_{t=1}^T \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}(t) \, \E_{p\sim \hat{P}(t)}\left[ S_{\alpha, i}(p, Y_t) - S_{\alpha, i}(f_b(t), Y_t) \right] + 2\left(\sqrt{\frac{\log mB}{T}}\right) \\
+  & \underset{\text{Lem. } \ref{lem:minimax_single_q_neg}}{\leq} 2\left(\sqrt{\frac{\log mB}{T}}\right).
+\end{align*}
+\end{proof} 
+
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% NEW SECTION
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Proofs for Section \ref{sec:multi_q}} 
+
+
+\subsection{Proof of Lemma \ref{lem:jn_sort}} \label{pf:jn_sort}
+\begin{proof}
+Define $w_i^s := (w_{i1}^s, ..., w_{iB}^s) \in \R^B$, $\one_i^s = (\indi{\theta_i < f_1^s(t)}, ..., \indi{\theta_i < f_B^s(t)}) \in \R^B$, and $\one_B = (1, ..., 1) \in \R^B$. Then, $V_n^*$ can be rewritten as
+\[
+V_n^* = \min_{j \in [m]_0} \left( \sum_{i=j+1}^{m} \sum_{s=1}^{n} w_i^s \cdot \one_i^s + \sum_{i=1}^{j} \sum_{s=n+1}^{N}  w_i^s \cdot (\one_B - \one_i^s) \right).
+\]
+Suppose there exists a pair of indices $n, n+1$ such that $j_n^* > j_{n+1}^*$. Using the definition of $V_n^*$, we have 
+\begin{align*}
+j_n^* &= \argmin_{j \in [m]_0} \left( \sum_{i=j+1}^{m} \sum_{s=1}^{n} w_i^s \cdot \one_i^s + \sum_{i=1}^{j} \sum_{s=n+2}^{N}  w_i^s \cdot (\one_B - \one_i^s) + \sum_{i=1}^{j} w_i^{n+1} \cdot (\one_B - \one_i^{n+1})\right) \\
+j_{n+1}^* &= \argmin_{j \in [m]_0} \left( \sum_{i=j+1}^{m} \sum_{s=1}^{n} w_i^s \cdot \one_i^s + \sum_{i=1}^{j} \sum_{s=n+2}^{N}  w_i^s \cdot (\one_F - \one_i^s) + \sum_{i=j+1}^{m} w_i^{n+1} \cdot \one_i^{n+1}\right).
+\end{align*}
+Two expressions share the first two terms and differ in the last term. We abbreviate these terms as following:
+\begin{align*}
+C_j & := \sum_{i=j+1}^{m} \sum_{s=1}^{n} w_i^s \cdot \one_i^s + \sum_{i=1}^{j} \sum_{s=n+2}^{N}  w_i^s \cdot (\one_B - \one_i^s) \\
+D_j & := \sum_{i=1}^{j} w_i^{n+1} \cdot (\one_B - \one_i^{n+1}) \\
+E_j & := \sum_{i=j+1}^{m} w_i^{n+1} \cdot \one_i^{n+1}.
+\end{align*}
+Note that $D_j$ is non-decreasing in $j$ and $E_j$ is non-increasing in $j$.
+Since $j_n^*$ and $j_{n+1}^*$ are the indices that minimize the $V_n(j)$ and $V_{n+1}(j)$, respectively, we have $C_{j_n^*} + D_{j_n^*} \leq C_{j_{n+1}^*} + D_{j_{n+1}^*}$ and $C_{j_n^*} + E_{j_n^*} \geq C_{j_{n+1}^*} + E_{j_{n+1}^*}$. This implies that 
+\[
+E_{j_{n+1}^*} - E_{j_n^*} \leq C_{j_n^*} - C_{j_{n+1}^*} \leq D_{j_{n+1}^*} - D_{j_n^*}.
+\]
+Because of the monotonicity of $D_j$ and $E_j$ and the assumption that $j_n^* > j_{n+1}^*$, the leftmost term should be non-negative and the rightmost term should be non-positive. Therefore, we obtain 
+\[
+C_{j_n^*} - C_{j_{n+1}^*} = D_{j_n^*} - D_{j_{n+1}^*} = E_{j_n^*} - E_{j_{n+1}^*} = 0 \quad \Rightarrow j_{n+1}^* \in J_n^*, \,\, j_n^* \in J_{n+1}^*.
+\]
+By choosing $j_{n+1}^*$ as a minimizer of $V_n(j)$ and $j_n^*$ as a minimizer of $V_{n+1}(j)$, we resolve the unsorted pair of indices. Repeating this process yields a sorted sequence $0=j_0^* \leq j_1^* \leq ... \leq j_{N-1}^* \leq j_N^* = m$ and this proves the existence of sorted sequence.
+\\
+Due to its existence, we can simply obtain a sorted sequence by choosing $j_n^* = \min J_n^*$ for all $n \in [N]$.
+\end{proof}
+
+
+\subsection{Proof of Proposition \ref{prop:Pn_def}} \label{pf:Pn_def}
+\begin{proof}
+  We use the notation $w_i^s$, $\one_i^s$, and $\one_B$ from the proof of Lemma~\ref{lem:jn_sort}. 
+  % We define a function $V_n(\cdot)$ as following:
+  % \begin{align}\label{eq:Vn_j_def}
+  % V_n(j) = \sum_{i=j+1}^{m} \sum_{s=1}^{n} w_i^s \cdot \one_i^s + \sum_{i=1}^{j} \sum_{s=n+1}^{N}  w_i^s \cdot (\one_B - \one_i^s)  \quad \forall j \in [m]_0, n \in [N].
+  % \end{align}
+  Note that the quantity $V_n^*$ defined in Lemma \ref{lem:jn_sort} is equal to $V_n(j_n^*)$ for all $n \in [N-1]$ and that $V_n(j) \geq V_n(j_n^*)$ for all $j \in [m]_0$.
+  \\
+  Using the fact that $\indi{\theta_i < k/m} = \indi{i \leq k}$, the last property in the lemma statement is equivalent to 
+  \begin{align*} 
+  & V_{n-1}^* - V_n^* \\
+  & = \E_{p_n \sim P_n^*} \left[ \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}^n \left( \indi{\theta_i < p_n} - \indi{\theta_i < f_b^n(t)} \right) \right] \nonumber\\
+  & = (1-C_n) \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}^n \left( \indi{i \leq k_n} - \indi{\theta_i < f_b^n(t)} \right) + C_n \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}^n \left( \indi{i \leq k_n+1} - \indi{\theta_i < f_b^n(t)} \right) \nonumber\\
+  & = (1-C_n) \sum_{i=1}^{m} w_{i}^n \cdot \left( \indi{i \leq k_n} \one_B - \one_i^n \right) + C_n \sum_{i=1}^{m} w_{i}^n \cdot \left( \indi{i \leq k_n+1} \one_B - \one_i^n \right) \nonumber\\
+  & = \sum_{i=1}^{k_n} w_i^n \cdot \one_B + C_n w_{k_n}^n \cdot \one_B - \sum_{i=1}^{m} w_i^n \cdot \one_i^n.
+  \end{align*}
+  The equality between the first and the last line is equivalent to
+  \begin{align}
+  \sum_{i=1}^{k_n} w_i^n \cdot \one_B + C_n w_{k_n}^n \cdot \one_B
+  = \sum_{i=1}^{m} w_i^n \cdot \one_i^n + V_{n-1}^* - V_n^* 
+  = \sum_{i=1}^{j_{n-1}^*} w_i^n \cdot \one_B + V_n(j_{n-1}^*) - V_n(j_n^*), \label{eq:Pn_eq}
+  \end{align}
+  where we used the identity $\sum_{i=1}^{m} w_i^n \cdot \one_i^n + V_{n-1}(j) = \sum_{i=1}^{j} w_i^n \cdot \one_B + V_n(j)$ evaluated at $j=j_{n-1}^*$.
+  \smallskip \\
+  Now we divide the cases into three cases. 
+  First, consider the case where $j_{n-1}^* = j_n^*$. In this case, simply $k_n = j_{n-1}^*$ with $C_n=0$ satisfies the equation \eqref{eq:Pn_eq}. Therefore, $P_n^* = \delta_{j_{n-1}^*/m}$ satisfies the conditions.
+  Second, consider the case where $j_{n-1}^* < j_n^*$ but $V_n(j_{n-1}^*) = V_n(j_n^*)$. $k_n = j_{n-1}^*$ with $C_n=0$ again satisfies the equation \eqref{eq:Pn_eq} and $k_n = j_{n-1}^* < j_n^*$ in this case.
+  Lastly, consider the case where $V_n(j_{n-1}^*) > V_n(j_n^*)$. We have 
+  \begin{align*}
+    \sum_{i=1}^{j_{n-1}^*} w_i^n \cdot \one_F
+    & < \sum_{i=1}^{j_{n-1}^*} w_i^n \cdot \one_F + V_n(j_{n-1}^*) - V_n(j_n^*) \\
+    & = \sum_{i=1}^{m} w_i^n \cdot \one_i^n + V_{n-1}^* - V_n^* \\
+    & = \sum_{i=1}^{j_{n}^*} w_i^n \cdot \one_F + V_{n-1}(j_{n-1}^*) - V_{n-1}(j_n^*) 
+    \leq \sum_{i=1}^{j_{n}^*} w_i^n \cdot \one_F,
+  \end{align*}
+  
+  where two equalities used the identity $\sum_{i=1}^{m} w_i^n \cdot \one_i^n + V_{n-1}(j) = \sum_{i=1}^{j} w_i^n \cdot \one_B + V_n(j)$ evaluated at $j=j_n^*-1$ and $j=j_n^*$ respectively.
+  This implies that there exists a $j_{n-1}^* \leq k_n < j_n^*$ such that 
+  \begin{align}\label{eq:Pn_kn_condition}
+    \sum_{i=1}^{k_n} w_i^n \cdot \one_B < \sum_{i=1}^{m} w_i^n \cdot \one_i^n - V_n^* + V_{n-1}^* \quad \text{and} \quad \sum_{i=1}^{k_n+1} w_i^n \cdot \one_B \geq \sum_{i=1}^{m} w_i^n \cdot \one_i^n - V_n^* + V_{n-1}^*.
+  \end{align}
+  With such $k_n$, we define $P_n^*$ with $C_n = \frac{1}{w_{k_n+1}^n \cdot \one_B} \left( \sum_{i=1}^{m} w_i^n \cdot \one_i^n - V_n^* + V_{n-1}^* - \sum_{i=1}^{k_n} w_i^n \cdot \one_B \right)$ and this satisfies $\text{supp}(P_n^*) \in [j_{n-1}^*/m, j_n^*/m]$ since $k_n+1 \leq j_n^*$.
+\end{proof}
+
+
+
+\subsection{Proof of Corollary \ref{cor:P_n_monotone}} \label{pf:P_n_monotone}
+\begin{proof}
+  It suffices to prove that $P_{n+1}$ is stochastically larger than $P_n$ since we can couple these two by $U \sim \text{Unif}(0,1)$ and $P_n = F_{P_n}^{-1}(U)$ and $P_{n+1} = F_{P_{n+1}}^{-1}(U)$ where $F_X^{-1}$ denotes a inverse of cumulative distribution funciton of $X$. 
+  
+  Combining the first three properties in the statement in Proposition \ref{prop:Pn_def}, we have $k_n < j_n^* \leq k_{n+1}$ if $j_{n-1}^* \neq j_n^*$. In this case, $P_{n+1}^*$ is stochastically larger than $P_n^*$ since $P_n^*$ is supported on $\{k_n / m, (k_n+1)/m\}$ and $k_{n+1} > k_n$. In case $j_{n-1}^* = j_n^*$, $P_n^* \equiv j_{n}^*$ and $P_{n+1}$ is stochastically larger than $P_n$ since $k_{n+1} \geq j_n^*$.
+\end{proof}
+
+
+\subsection{Proof of Corollary \ref{cor:P_n_support}} \label{pf:P_n_support}
+\begin{proof}
+  Since $P_n^*$ is stochastically ordered, it suffices to prove that $P_1^* \leq m1 / m$ and $P_N^* \geq m_2 / m$ almost surely.
+  First we prove that $P_1^* \geq m_1 / m$ almost surely. Observe that, for $i \leq m_1$, $\indi{\theta_i < f_b^n(t)} = 1$ for all $b \in [B]$ and $n \in [N]$. This implies that $\one_i^n = \one_B$ for all $n \in [N]$ and $i \leq m_1$. Therefore, for $j \leq m_1$,
+  \[
+  V_1(j) = \sum_{i=j+1}^m w_i^1 \cdot \one_i^1 + \sum_{i=1}^j \sum_{s=2}^N w_i^s \cdot (\one_B - \one_i^s) 
+  = \sum_{i=j+1}^{m_1} w_i^1 \cdot \one_B + \sum_{i=m_1+1}^{m} w_i^1 \cdot \one_i^1
+  \]
+  holds and $V_1(j)$ is non-increasing in $j$ on $j \leq m_1$. This implies that $V_1^* \leq V_1(m_1) = \sum_{i=m_1+1}^m w_i^1 \cdot \one_i^1$ and thus 
+  \[
+  \sum_{i=1}^{m_1} w_i^1 \cdot \one_B 
+  = \sum_{i=1}^{m_1} w_i^1 \cdot \one_i^1 
+  \leq \sum_{i=1}^m w_i^1 \cdot \one_i^1 - V_1^* + V_0^*, 
+  \] 
+  since $\one_i^s = \one_B$ for $i \leq m_1$ and $V_0^* = 0$. 
+  In case the inequality is strict, $k_1$ that satisfies the condition \eqref{eq:Pn_kn_condition} should be at least $m_1$, which proves $P_1^* \geq m_1 / m$ almost surely. In case the equality holds, $k_1+1 = m_1$ since $w_{m_1}^1 \cdot \one_B = \sum_{b=1}^B w_{m_1}^1 > 0$ from the corollary condition. However, $C_1 = 1$ in this case and $P_1^* = \delta_{m_1 / m}$ which satisfies $P_1^* \geq m_1 / m$ almost surely.
+  
+  Next, we prove that $P_N^* \leq m_2 / m$ almost surely in a similar manner. For $i > m_2$, $\indi{\theta_i < f_b^n(t)} = 0$ for all $b \in [B]$ and $n \in [N]$. This implies that $\one_i^n = \one_B$ for all $n \in [N]$ and $i > m_2$. Therefore, for $j \geq m_2$,
+  \[
+  V_{N_1}(j) = \sum_{i=j+1}^m \sum_{s=1}^{N-1} w_i^s \cdot \one_i^s + \sum_{i=1}^j w_i^N \cdot (\one_B - \one_i^N) 
+  = \sum_{i=1}^{m_2} w_i^N \cdot (\one_B - \one_i^N) + \sum_{i=m_2+1}^{m} w_i^N \cdot \one_B
+  \]
+  holds and $V_{N-1}(j)$ is non-decreasing in $j$ on $j \geq m_2$. This implies that $V_{N-1} \leq V_{N-1}(m_2) = \sum_{i=1}^{m_2} w_i^N \cdot (\one_B - \one_i^N)$ and thus 
+  \[
+  \sum_{i=1}^m w_i^N \cdot \one_i^N - V_{N}^* + V_{N-1}^* 
+  \leq \sum_{i=1}^m w_i^N \cdot \one_i^N + \sum_{i=1}^{m_2} w_i^N \cdot (\one_B - \one_i^N) 
+  = \sum_{i=1}^{m_2} w_i^N \cdot \one_B
+  \]
+  since $\one_i^N = \mathbf{0}$ for $i > m_2$ and $V_N^* = 0$. Because $w_{m_2}^N \cdot \one_B = \sum_{b=1}^B w_{m_2}^N > 0$ from the corollary condition, $k_n$ that satisfies the condition \eqref{eq:Pn_kn_condition} should satisfy $k_N < m_2$, which proves $P_N^* \leq m_2 / m$ almost surely.
+\end{proof}
+
+
+
+\subsection{Proof of Theorem \ref{thm:minimax_negative_multi_q}} \label{pf:minimax_negative_multi_q}
+\begin{proof}
+  Denote the minimax objective function by 
+  \[O(\{P_n\}_{n=1}^N, P_y) = \sum_{n=1}^N \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}^n \E_{p_n \sim P_n, Y \sim P_y}[S_{n, i}(p_n,Y) - S_{n,i}(f_b^n(t),Y)].
+  \]
+  In a similar vein to the proof of Proposition \ref{prop:minimax_sol_single_q}, we show $O(\{P_n^*\}_{n=1}^N, P_y^*) = \max_{P_y} O(\{P_n^*\}_{n=1}^N, P_y)$ then show $O(\{P_n^*\}_{n=1}^N, P_y^*) = \min_{P_n \in \Delta_m, n\in[N]} O(\{P_n\}_{n=1}^N, P_y^*)$.
+  
+  Following the decomposition \eqref{eq:oppy_q}, $O(\{P_n\}_{n=1}^N, P_y)$ can be written as
+  \[
+  O(\{P_n\}_{n=1}^N, P_y) = \sum_{n=1}^N \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}^n \E_{p_n \sim P_n, Y \sim P_y}[\one(Y \leq \theta_i < p_n) - \tau_n \one(\theta_i<p_n) - \one(Y \leq \theta_i < f_b^n(t))] + C_n,
+  \]
+  where $C_n =\tau_n \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}^n \indi{\theta_i < f_b^n(t)}$ which does not depend on $P_n$ or $P_y$.
+  
+  Using this decomposition, we prove $O(\{P_n^*\}_{n=1}^N, P_y^*) = \max_{P_y} O(\{P_n^*\}_{n=1}^N, P_y)$. Let $P_y(\frac{j}{m})=p_{yj}$ for $j=0,...,m$. Then, again using the notation $w_i^s$, $\one_i^s$, and $\one_B$ from the proof of Lemma~\ref{lem:jn_sort}, $O(\{P_n^*\}_{n=1}^N, P_y)$ is rephrased as the following:
+  \begin{align}\label{eq:O_Pstar_Py_decomp}
+  O(\{P_n^*\}_{n=1}^N, P_y) 
+  & = \sum_{n=1}^N \E_{p_n \sim P_n^*} \left[\sum_j p_{yj} \sum_{i=j+1}^{m} w_i^n \cdot \left( \indi{\theta_i < p_n} \one_F - \one_i^n \right)\right] + C(P_n^*),
+  \end{align}
+  where $C(P_n^*) = - \tau_n \E_{p_n \sim P_n^*} \sum_{i=1}^{m} w_i^n \cdot (\indi{\theta_i < p_n} \one_F - \one_i^n)$ only depends on $P_n^*$ and does not depend on $P_y$.
+  
+  Plugging in $P_n^*$ given as \eqref{eq:Pn_def}, the summand can be expressed as 
+  \begin{align*}
+  A_j^n := \E_{p_n \sim P_n^*} & \left[\sum_{i=j+1}^{m} w_i^n \cdot \left( \indi{\theta_i < p_n} \one_F - \one_i^n\right)\right] 
+  = \begin{cases}
+  -\sum_{i=1}^{j} w_i^n \cdot (\one_B-\one_i^n) - V_n^* + V_{n-1}^* & \quad j \leq k_n^* \\
+  - \sum_{i=j+1}^{m} w_i^n \cdot \one_i^n & \quad j > k_n^* \\
+  \end{cases} 
+  \end{align*}
+  
+  This leads to 
+  \begin{align*}
+  A_j & := \sum_{n=1}^N A_j^n \\
+  &= \begin{cases}
+  -\sum_{n=1}^N \sum_{i=1}^{j} w_i^n \cdot (\one_B - \one_i^n) + V_0^* & \quad j \leq k_1 \\
+  -\sum_{s=1}^n \sum_{i=j+1}^{m} w_i^s \cdot \one_i^s - \sum_{s=n+1}^{N} \sum_{i=1}^{j} w_i^s \cdot (\one_B-\one_i^s) + V_n^* & \quad  j \in (k_n, k_{n+1}], \,\, n \in [N-1] \\
+  -\sum_{n=1}^N \sum_{i=j+1}^{m} w_i^n \cdot \one_i^n + V_N^* & \quad j > k_N
+  \end{cases}
+  \end{align*}
+  Notice that $A_j$ is non-increasing on $j \leq k_1$ and non-decreasing on $j > k_N$. $A_0 = 0$ and $A_m = 0$ is the maximum value of $A_j$ in these ranges, respectively. Next, observe that $A_j \leq 0$ for all $j=0,1,...,m$ since $V_n^*$ is the minimum value that $\sum_{s=1}^n \sum_{i=j+1}^{m} w_i^s \cdot \one_i^s + \sum_{s=n+1}^{N} \sum_{i=1}^{j} w_i^s \cdot (\one_B-\one_i^s)$ can achieve by its definition. It suffices to show that $A_{j_n^*} = 0$ for $n \in [N-1]$ since $P_y^*$ only puts mass on these points. Note that $A_{j_0} = A_0 = 0$ and $A_{j_N} = A_m = 0$.
+  
+  From the first and second properties in the statement of Proposition \ref{prop:Pn_def}, we have $k_n < j_n^* \leq k_{n+1}$ if $j_{n-1}^* \neq j_n^*$ and $j_{n-1}^* = j_n^*= k_n$ if $j_{\nu-1}^* = j_\nu^*$, for $n \in [N-1]$. In the former case, we obtain $A_{j_n^*} = 0$ from $j \in (k_n, k_{n+1}]$ case in the definition of $A_j$ above. In the latter case, $j_n^* = k_n$ does not fall into the range $(k_n, k_{n+1}]$. Still, from $j \in (k_{n-1}, k_{n}]$ case ($j \leq k_1$ case if $n=1$) in the definition of $A_j$ , we have
+  \begin{align*}
+  A_{j_n^*} 
+  & = -\sum_{s=1}^{n-1} \sum_{i=j+1}^{m} w_i^s \cdot \one_i^s - \sum_{s=n}^{N} \sum_{i=1}^{j} w_i^s \cdot (\one_B - \one_i^s) + V_{n-1}^* \\
+  & =  - V_{n-1}(j_n^*) + V_{n-1}^* = -V_{n-1}(j_{n-1}^*) + V_{n-1}^* = 0,
+  \end{align*}
+  where $V_n(j)$ is defined as equation \eqref{eq:Vn_def}. Therefore, $A_{j_n^*} = 0$ for all $n \in [N-1]$ and $O(\{P_n^*\}_{n=1}^N, P_y^*) = \max_{P_y} O(\{P_n^*\}_{n=1}^N, P_y)$. \smallskip
+  
+  Next, we show that $O(\{P_n^*\}_{n=1}^N, P_y^*) = \min_{P_n \in \Delta_m, n\in[N]} O(\{P_n\}_{n=1}^N, P_y^*)$. This follows directly from the propriety of $S_{\tau,\theta_i}$ losses and the third property in Proposition \ref{prop:Pn_def}. Any point in the support of $P_n^*$ is $\tau_n$-level quantile of $P_y^*$ since $P_y(Y \leq j_{n-1}^*/m) = \tau_n$ and $P_y(Y \geq j_n^*/m) = \tau_n$.
+  
+  Lastly, we compute the value of the minimax program. Decomposition \eqref{eq:O_Pstar_Py_decomp} can be rewritten as 
+  \[
+  O(\{P_n^*\}_{n=1}^N, P_y) = \sum_{j=0}^m p_{yj} A_j + \sum_{n=1}^N C(P_n^*).
+  \]
+  Since $P_Y^*$ only puts mass on points $j/m$ such that $A_j = 0$, plugging in $P_y^*$ into the equation above yields
+  \begin{align*}
+  O(\{P_n^*\}_{n=1}^N, P_y^*) 
+  &= \sum_{n=1}^N C(P_n^*) = -\sum_{n=1}^N \tau_n \E_{p_n \sim P_n^*} \sum_{i=1}^{m} w_i^n \cdot (\indi{\theta_i < p_n}\one_F - \one_i^n) \\
+  &  = -\sum_{n=1}^N \tau_n (V_{n-1}^* - V_n^*) = -\sum_{n=1}^{N-1}(\tau_{n+1}-\tau_n)V_n^* \leq 0,
+  \end{align*}
+  where the second from the last equality used the fourth property in Proposition \ref{prop:Pn_def}.
+\end{proof}
+
+
+
+\section{Proofs for Section \ref{sec:multi_wql}}
+\subsection{Proof of Proposition \ref{prop:theta_n_pn_sorted_wql}} \label{pf:theta_n_pn_sorted_wql}
+\begin{proof}
+Since $V_n(\theta)$ shares the same structure with $V_n(j)$ in Section \ref{sec:multi_q}, existence of a sorted sequence follows the same proof in Lemma \ref{lem:jn_sort}. To prove that such $\theta_n^*$ takes values in $[f_\text{min}(t), f_\text{max}(t)]$ for all $n \in [N-1]$, it suffices to show that $J_n^* \cap [f_\text{min}(t), f_\text{max}(t)] \neq \emptyset$ for all $n \in [N-1]$. On $\theta \leq f_\text{min}(t)$, the second sum in $V_n(\theta)$ is simply zero and thus $V_n(\theta)$ is non-increasing. On $\theta \geq f_\text{max}(t)$, the first sum in $V_n(\theta)$ is zero and thus $V_n(\theta)$ is non-decreasing. Therefore, $J_n^*$ cannot only contain values that are not in $[f_\text{min}(t), f_\text{max}(t)]$. \smallskip
+
+Next, we prove that $\theta_{n-1}^* \leq p_n^* \leq \theta_n^*$ for $n \in [N-1]$. Observe the identity:
+\[
+V_{n-1}(\theta) - V_{n}(\theta) = \sum_{b=1}^B w_b^n(t) (\max(\theta - f_b^n(t), 0) - \max(f_b^n(t)-\theta, 0)) = \sum_{b=1}^B w_b^n(t) (\theta-f_b^n(t)),
+\] 
+which implies that 
+\begin{align*}
+p_n^* & = \frac{1}{\sum_{b=1}^B w_b^n(t)}\left( \sum_{b=1}^B w_b^n(t) f_b^n(t) + V_{n-1}^* - V_{n-1}(\theta_n^*) + \sum_{b=1}^B w_b^n(t) (\theta_n^* - f_b^n(t)) \right) \leq \theta_n^*,
+\end{align*}
+since $V_{n-1}^* - V_{n-1}(\theta_n^*) \leq 0$ by the definition of $V_n^*$. Similarly, 
+\begin{align*}
+    p_n^* & = \frac{1}{\sum_{b=1}^B w_b^n(t)}\left( \sum_{b=1}^B w_b^n(t) f_b^n(t) + V_{n-1}(\theta_{n-1}^*) - V_n^* + \sum_{b=1}^B w_b^n(t) (\theta_{n-1}^* - f_b^n(t)) \right) \geq \theta_{n-1}^*,
+\end{align*}
+which completes the proof.
+\end{proof}
+
+
+
+\subsection{Proof of Theorem \ref{thm:minimax_wql}} \label{pf:minimax_wql}
+\begin{proof}
+  Similar to the proof of Theorem \ref{thm:minimax_negative_multi_q}, define $O(\{P_n\}_{n=1}^N, P_y)$ as 
+  \[
+  O(\{P_n\}_{n=1}^N, P_y) = \sum_{n=1}^N \sum_{b=1}^B w_b^n(t) \E_{P_n \sim P_n, Y \sim P_y} [\rho_n(P_n, Y) - \rho_n(f_b^n(t), Y)].
+  \]
+  It suffices to prove that $O(\{P_n^*\}_{n=1}^N, P_y^*) = \max_{P_y} O(\{P_n^*\}_{n=1}^N, P_y^*) = \min_{P_n \in \cp(\R), n \in [N]} O(\{P_n\}_{n=1}^N, P_y^*)$. Observe that $\rho_\tau(x,y) = \tau(y-x) + \max(x-y,0)$. This simplifies $O(\{P_n^*\}_{n=1}^N, P_y)$ to 
+  \begin{align*}
+  O(\{P_n^*\}_{n=1}^N, P_y) 
+  & = \E_{Y \sim P_y} \sum_{n=1}^N \sum_{b=1}^B w_b^n(t) [\tau_n(Y-p_n^*) + \max(p_n^*-Y,0) - \tau_n(Y-f_b^n(t)) - \max(f_b^n(t)-p_n^*,0)] \\
+  & = \E_{Y \sim P_y} \sum_{n=1}^N \sum_{b=1}^B w_b^n(t) [\max(p_n^*-Y,0) - \max(f_b^n(t)-p_n^*,0)] + C, 
+  \end{align*}
+  where $C = -\sum_{n=1}^N (V_n^* - V_{n-1}^*) \tau_n = - \sum_{n=1}^{N-1}(\tau_{n+1}-\tau_n) V_n^*$ does not depend on $P_y$. Now we divide cases into $y < p_1^*$, $p_1^* \leq y < p_2^*$, ..., $p_{N-1}^* \leq y < p_N^*$. 
+  \begin{align*}
+  & \sum_{n=1}^N \sum_{b=1}^B w_b^n(t) [\max(p_n^*-y,0) - \max(f_b^n(t)-p_n^*,0)] \\
+  & = 
+  \begin{cases}
+      - \sum_{n=1}^N \sum_{b=1}^B w_b^n \max(y - f_b^n(t), 0) & y < p_1^* \\
+      - \left( \sum_{s=n+1}^N \sum_{b=1}^B w_b^s \max(y - f_b^s(t), 0) + \sum_{s=1}^n \sum_{b=1}^B w_b^s \max(f_b^s(t)-y, 0) \right) + V_n^* & y \in [p_n^*, p_{n+1}^*)  \\
+      - \sum_{n=1}^N \sum_{b=1}^B w_b^n \max(f_b^n(t) - y, 0) & y \geq p_N^*
+  \end{cases}
+  \end{align*}
+  In the interval $(-\infty, p_1^*)$, the quantity is maximized at $y = \theta_0^* = f_\text{min}(t)$ and its maximum value is $0$. In interval $[p_n^*, p_{n+1}^*)$, the quantity is maximized at $y = \theta_n^*$ (contained in the interval as shown in Proposition \ref{prop:theta_n_pn_sorted_wql}) and its maximum value is $0$. In interval $(p_{N-1}^*, \infty)$, the quantity is maximized at $y = \theta_N^* = f_\text{max}(t)$ and its maximum value is $0$. Since $P_y^*$ only puts mass on the points $\{\theta_n^*\}_{n=0}^N$, $O(\{P_n^*\}_{n=1}^N, P_y^*) = \max_{P_y} O(\{P_n^*\}_{n=1}^N, P_y) = C = - \sum_{n=1}^{N-1}(\tau_{n+1}-\tau_n) V_n^* \leq 0$.
+  
+  Next, $O(\{P_n^*\}_{n=1}^N, P_y^*) = \min_{P_n \in \cp(\R), n \in [N]} O(\{P_n\}_{n=1}^N, P_y^*)$ follows directly from the propriety of $\rho_\tau$ and the fact that $p_n^*$ is $\tau_n$-level quantile of $P_y^*$. 
+\end{proof}
+
+
+\subsection{Proof of Inequality \ref{eq:omni_twoplayer_wql_error_bound}} \label{pf:omni_twoplayer_wql_error_bound}
+\begin{proof}
+  \begin{align*}
+    & \sup_{S \in \cs_{wql},\, b \in [B]} \frac{1}{T} \sum_{t=1}^T [S(\{\hat{p}^G_n(t)\}_{n=1}^N, Y_t) - S(\{f_b^n(t)\}_{n=1}^N, Y_t)] \\
+    & = \max_{n \in [N], b \in [B]} \frac{1}{T} \sum_{t=1}^T [\rho_n(\hat{p}^G_n(t), Y_t) - \rho_n(f_b^n(t), Y_t)] \\
+    & \leq \frac{1}{T} \sum_{t=1}^T \sum_{n=1}^N \sum_{b=1}^B w_b^n(t) [\rho_n(\hat{p}^G_n(t), Y_t) - \rho_n(f_b^n(t), Y_t)] \\
+    & \quad + \frac{\eta}{T} \sum_{t=1}^T \sum_{n=1}^N \sum_{b=1}^B w_b^n(t) \left(\rho_{n}(\hat{p}^G_n(t), Y_t) - \rho_{n}(f_b^n(t), Y_t)\right)^2 + \frac{\log BN}{\eta T} \\
+    & \underset{\text{Thm. } \ref{thm:minimax_wql}}{\leq} \eta \left(\frac{1}{T} \sum_{t=1}^T \max_{n,b} \left(\rho_{n}(\hat{p}^G_n(t), Y_t) - \rho_{n}(f_b^n(t), Y_t)\right)^2\right) + \frac{\log BN}{\eta T}.
+  \end{align*}
+\end{proof}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% NEW SECTION
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Different versions of omniprediction algorithm} \label{appsec:diff_omni_algos}
 \subsection{General base forecasters class with pre-computed best competitor}
 We can modify Algorithm \ref{alg:omni-twoplayer_online_q} to a version that accommodates more general $\cf$, which now takes the best competitor for each elementary score $S_{\alpha, i}$, which can be computed in advance using a hold-out set, as input instead of discovering it inside the algorithm.
@@ -29,7 +435,7 @@ We can modify Algorithm \ref{alg:omni-twoplayer_online_q} to a version that acco
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % NEW SECTION
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Efficient computation of minimax solution}
+\section{Efficient computation of minimax solution} \label{appsec:fast}
 \subsection{Multiple quantile level omniprediction} \label{appsubsec:multi_q_fast}
 This subsection introduces Algorithm \ref{alg:compute_vn}, an efficient subroutine to compute $V_n^*$ and $j_n^*$ for each $n \in [N-1]$ in $O(mNB)$ time. Recall the definition of $V_n^*$ from Section \ref{sec:multi_q}:
 \[
@@ -79,7 +485,7 @@ This subsection introduces Algorithm \ref{alg:compute_vn}, an efficient subrouti
 
 
 \subsection{Omniprediction for weighted quantile losses} \label{appsubsec:wql_fast}
-This subsection introduces Algorithm \ref{alg:compute_theta_n_wql} that computes $\{\theta_n^*\}_{n=0}^N$ in $O(K\log(K))$ time, where $K$ is number of unique values in $\{f_b^n(t)\}_{b,n}$. With this algorithm, now the computational bottleneck lies in computing $V_n^* = V_n(\theta_n^*)$ for each $n \in [N-1]$, which takes $O(N^2B)$ in total. To reduce the time complexity even further, we introduce Algorithm \ref{alg:compute_vn_diff_wql} that computes $V_{n-1}^* - V_n^*$ for all $n \in [N-1]$, which is all we need to to compute the minimax solution $\hat{p}^G_n(t)$ (See Proposition \ref{prop:pn_def_wql}), in $O(NB)$ time. \smallskip
+This subsection introduces Algorithm \ref{alg:compute_theta_n_wql} that computes $\{\theta_n^*\}_{n=0}^N$ in $O(K\log(K))$ time, where $K$ is number of unique values in $\{f_b^n(t)\}_{b,n}$. With this algorithm, now the computational bottleneck lies in computing $V_n^* = V_n(\theta_n^*)$ for each $n \in [N-1]$, which takes $O(N^2B)$ in total. To reduce the time complexity even further, we introduce Algorithm \ref{alg:compute_vn_diff_wql} that computes $V_{n-1}^* - V_n^*$ for all $n \in [N-1]$, which is all we need to to compute the minimax solution $\hat{p}^G_n(t)$ (See Proposition \ref{prop:theta_n_pn_sorted_wql}), in $O(NB)$ time. \smallskip
 
 We begin with introducing an efficient algorithm to compute $\{\theta_n^*\}_{n=0}^N$ in $O(K\log(K))$ time. Recall the definition of $V_n^*$ in Section \ref{sec:multi_wql}:
 \[
@@ -167,9 +573,9 @@ Observe that most quantities can be precomputed in $O(NB)$ time. Algorithm \ref{
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % NEW SECTION
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{The effect of post-sorting on loss functions} \label{appsec:post_sorting}
+\section{The effect of post-sorting on scoring functions} \label{appsec:post_sorting}
 
-\cite{fakoor2023flexible} showed that post-sorting never increases the loss for \textbf{unweighted} sums of pinball losses at different quantile levels. Unfortunately, the same does not hold for \textbf{weighted} sums of pinball losses. We present two results in this section. First, for a class of weighted sums of pinball losses at two quantile levels, we fully characterize the conditions under which post-sorting always decreases the loss. Conversely, when these conditions fail, there exists an instance $(Y, x_1, x_2)$ for which post-sorting increases the loss. Second, we present a class of loss functions where post-sorting does not increase the loss.
+\cite{fakoor2023flexible} showed that post-sorting never increases the loss for \textbf{unweighted} sums of pinball losses at different quantile levels. Unfortunately, the same does not hold for \textbf{weighted} sums of pinball losses. We present two results in this section. First, for a class of weighted sums of pinball losses at two quantile levels, we fully characterize the conditions under which post-sorting always decreases the loss. Conversely, when these conditions fail, there exists an instance $(Y, x_1, x_2)$ for which post-sorting increases the loss. Second, we present a class of scoring functions where post-sorting does not increase the loss.
 
 % \[
 % \ell(x_1, x_2) := \E_Y [w_\alpha \rho_\alpha (Y-x_1) + w_\beta \rho_\beta (Y-x_2)].
@@ -239,7 +645,7 @@ Therefore, post-sorting increases the loss. Next, consider the case $w_\alpha > 
 
 
 
-We prove another class of loss functions where post-sorting does not increase the loss. Combining the characterization of loss functions that are consistent for single quantile level (Equation \eqref{eq:q_consistent_score}) and Theorem \ref{thm:decomp_multi_q}, a loss function that is consistent for multiple quantile levels can be written as the following form under mild regularity conditions:
+We prove another class of scoring functions where post-sorting does not increase the loss. Combining the characterization of scoring functions that are consistent for single quantile level (Equation \eqref{eq:q_consistent_score}) and Theorem \ref{thm:decomp_multi_q}, a loss function that is consistent for multiple quantile levels can be written as the following form under mild regularity conditions:
 \begin{align} \label{eq:multi_q_consistent_loss}
 \ell(\{x_n\}_{n=1}^N) = \E_Y \sum_{n=1}^{N} w_n (\indi{Y < x_n} - \tau_n)(g_n(x_n) - g_n(Y)),  
 \end{align}

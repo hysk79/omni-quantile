@@ -5,7 +5,6 @@ Probabilistic forecasts are typically evaluated using a chosen proper scoring ru
 
 This objective is also motivated from downstream decision-making. In many applications, different users interact with forecasts through their own utility (or scoring) functions. If a user believes a predictive distribution $P$ and chooses an action that minimizes their expected loss, then this induces a proper scoring rule. Consequently, minimizing loss over all proper scoring rules leads to minimizing the decision loss for all users simultaneously, regardless of how their objectives differ. % More explicitly, let $u$ denote a user-specific utility (or scoring) function and let $\mathcal{A}$ denote the action space. Given a predictive distribution $P$, a user selecting an action $a(P;u) \in \arg\min_{a \in \mathcal{A}} \mathbb{E}_{Y \sim P}[u(a,Y)]$ induces a proper scoring rule $S(P,Y) := u(a(P;u), Y)$. 
 
-
 In many practical settings, working with full predictive distributions is unnecessary or computationally burdensome. A natural alternative is to summarize predictions through a collection of quantile estimates. For a broad class of decision problems, optimal actions depend only on certain quantiles, making such summaries sufficient for decision-making.
 
 To illustrate, consider a hospital with capacity $C$. The hospital is primarily concerned with whether predicted demand $\hat{p}$ and realized demand $Y$ fall on different sides of $C$. Underestimating demand ($\hat{p} < C < Y$) may lead to severe consequences, while overestimating ($Y < C < \hat{p}$) incurs milder costs. Suppose the hospital uses the scoring function
@@ -37,13 +36,17 @@ While the omniprediction framework is conceptually appealing, its algorithmic re
 In this paper, we develop an omniprediction framework tailored to quantile forecasting in online setting. Our objective is to minimize scores across \emph{all} scoring functions that are consistent for quantile functionals. Our main contributions are as follows:
 
 \begin{itemize}
-    \item \textbf{Omniprediction for quantile functionals.} We formulate omniprediction over the class of all scoring functions that are consistent for quantiles, leveraging classical decomposition results that express such losses as weighted combinations of elementary threshold-based scores.
-    
-    \item \textbf{Efficient online algorithms.} We propose computationally efficient, two-player game-based algorithms for both single and multiple quantile levels. By exploiting the structure of quantile-consistent scoring functions, we derive closed-form solutions to the underlying minimax problems, avoiding the need for generic optimization.
-    
-    \item \textbf{Theoretical guarantees.} We establish $O(1/\sqrt{T})$ regret bounds for our algorithms, matching standard online learning rates.
-    
-    \item \textbf{Coherent multi-quantile prediction.} Our algorithm produces non-crossing quantile estimates by construction, even when base forecasts (comparators) exhibit quantile crossing, removing the need for post-hoc sorting.
+    \item \textbf{Omniprediction via model aggregation for quantile functionals.}
+    We propose an online ensemble (model aggregation) algorithm that takes a collection of base forecasters and outputs predictions with omniprediction guarantees. We introduce two algorithms, where one aims to minimize the regret for all quantile-consistent scoring functions (Algorithm~\ref{alg:omni-twoplayer_online_q}), and the other aims to minimize the regret for all weighted quantile losses (Algorithm~\ref{alg:omni-twoplayer_online_wql}). The latter is a simpler and faster version of the former, and considers a smaller set of scoring functions. 
+
+    \item \textbf{Computationally efficient realization of omniprediction.}
+    While omniprediction is a conceptually appealing objective, its algorithmic realization is often computationally demanding due to the need to optimize over large classes of scoring functions. We exploit the structural decomposition of quantile-consistent losses to derive efficient algorithms based on a two-player game formulation. In particular, our omniprediction algorithm for all weighted quantile losses (Algorithm~\ref{alg:omni-twoplayer_online_wql}) achieves computational complexity matching that of running independent Hedge updates at each quantile level. See Appendix~\ref{appsec:fast} for more details.
+
+    \item \textbf{Optimal regret guarantees.}
+    We establish $O(1/\sqrt{T})$ regret bounds for our algorithms (Theorem \ref{thm:omni-twoplayer_online_q}, Inequality \eqref{eq:omni_twoplayer_wql_error_bound}), matching the optimal rates in online learning. Importantly, these guarantees hold uniformly over all scoring functions consistent for the target quantile levels, demonstrating robustness to the choice of evaluation metric.
+
+    \item \textbf{Coherent multi-quantile predictions without post-processing.}
+    Our algorithm produces non-crossing quantile estimates by construction, even when the base forecasts themselves exhibit quantile crossing or lie on very different scales (Corollary~\ref{cor:P_n_monotone}, Proposition~\ref{prop:theta_n_pn_sorted_wql}). As a result, no additional post-hoc correction is required to enforce monotonicity across quantile levels. In fact, the procedure can be viewed as a principled post-processing step: when given a single base forecaster, it returns the original prediction if it is already ordered, and otherwise outputs a corrected set of quantile estimates that are coherent but not necessarily obtained by simple sorting. This highlights an additional benefit of our method as a structure-enforcing transformation for quantile forecasts.
 \end{itemize}
 
 % \paragraph{Related work.}
