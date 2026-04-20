@@ -206,7 +206,7 @@ def single_q_minmax_solver2_v2(    # for multi-q case. Should be able to merge w
     # From theory, there exists k_n* s.t. j_{n-1}* <= k_n* < j_n* and \sum_{i=0}^{k_n*} w_i >= VALUE and \sum_{i=0}^{k_n*-1} w_i < VALUE.
     # So the biggest value of j to check Bk_pre[j] \geq VALUE is j_n*. Since Bk_pre[j_n*] = \sum_{i=0}^{j_n*-1 = <max value of k_n*>} w_i - \sum_{i=0}^{m-1} w_i \indi,
     for j in range(j_opt_pre+1, j_opt_n+1):  
-        if Bk_pre[j] >= eq_value - tol:
+        if Bk_pre[j] >= eq_value: # - tol
             # Do we need this?
             # assert not np.isclose(Bk_pre[j-1], Bk_pre[j], rtol=0, atol=tol), f'Bk_pre[j-1]: {Bk_pre[j-1]}, Bk_pre[j]: {Bk_pre[j]}, eq_value: {eq_value}'
             k_star = j-1
@@ -220,6 +220,9 @@ def single_q_minmax_solver2_v2(    # for multi-q case. Should be able to merge w
                 denom = Bk_pre[j] - Bk_pre[j-1]
                 scale = max(abs(num), abs(denom), 1.0)
                 k_star_prob = (num / scale) / (denom / scale)
+            if k_star_prob < 0.0 or k_star_prob > 1.0:
+                print(k_star_prob, eq_value, Bk_pre[j-1], Bk_pre[j])
+                print('curr_j:', j, 'j_opt_pre:', j_opt_pre, 'j_opt_n:', j_opt_n)
             phat = np.random.choice([j_opt_converter(k_star, thetas), j_opt_converter(k_star+1, thetas)], p=[k_star_prob, 1.0-k_star_prob])
             return {
                 "phat": phat,
@@ -250,12 +253,10 @@ def multi_q_minmax_solver_v2(
     Vn_computer = VnComputer_v2(weights_F = theta_weights_F, 
                             thetas = thetas, 
                             weighted_indicators_NmF = weighted_indicators_NmF,  # (N, m, F)
-                            tol=np.min(theta_weights_F.sum(axis=2))/3, # tol=tol,
+                            tol=np.min(weighted_indicators_NmF.sum(axis=2))/3, # tol=tol,
                             )
     Vn_values, j_optimal =  Vn_computer.compute_all_Vn()
-
-    # print(f"Vn_values: {Vn_values}")
-    # print(f"j_optimal: {j_optimal}")
+    
     phat_dict_list = []
 
     weighted_indicators_Nm = weighted_indicators_NmF.sum(axis=2) # (N, m, F) -> (N, m)

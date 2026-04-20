@@ -113,7 +113,7 @@ def omniprediction_multiq_online_v2(Y: pd.Series, forecasts_dict: dict, unit: in
     phat_history = np.zeros((T, N))
     k_star_history = np.zeros((T, N))
     k_star_prob_history = np.zeros((T, N))
-    w_history = np.zeros((T, N, m, F))
+    # w_history = np.zeros((T, N, m, F))
     minimax_value_history = np.zeros((T,))
     omni_error_history = np.zeros((T, N, m))
     forecasters_preds_history = np.zeros((T, N, F))     # Predictions of each forecaster
@@ -136,9 +136,9 @@ def omniprediction_multiq_online_v2(Y: pd.Series, forecasts_dict: dict, unit: in
         forecaster_preds = np.asarray(forecaster_preds, dtype=np.float64)
         # weighted_indicators_NmF = w * np.asarray(thetas[None, :, None] < forecaster_preds[:,None,:], dtype=np.float64)
         weighted_indicators_NmF = w * indicators_NmF[t,:,:,:]
-        
-        if np.min(w) < 1e-15:
-            print(f"Minimum of weight is too small: {np.min(w)}")
+
+        # if np.min(w) < 1e-15:
+        #     print(f"Minimum of weight is too small: {np.min(w)}")
         phat_dict_list, Vn_values = multi_q_minmax_solver_v2(
             theta_weights_F=w,
             thetas=thetas,
@@ -170,7 +170,7 @@ def omniprediction_multiq_online_v2(Y: pd.Series, forecasts_dict: dict, unit: in
         assert f_scores.shape == (N, m, F), f'f_scores.shape: {f_scores.shape}, N: {N}, m: {m}, F: {F}'
         
         # Step 3: Update weights w_i
-        w_history[t,:] = w
+        # w_history[t,:] = w
         log_w = np.log(w + 1e-10)
         log_w += eta * (phat_score[:,:,None] - f_scores)
         
