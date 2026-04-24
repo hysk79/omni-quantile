@@ -116,8 +116,9 @@ def omniprediction_multiq_online_v2(Y: pd.Series, forecasts_dict: dict, unit: in
     # w_history = np.zeros((T, N, m, F))
     minimax_value_history = np.zeros((T,))
     omni_error_history = np.zeros((T, N, m))
+    pb_loss_history = np.zeros((T, N))
     forecasters_preds_history = np.zeros((T, N, F))     # Predictions of each forecaster
-    forecasters_score_history = np.zeros((T, N, m, F))
+    # forecasters_score_history = np.zeros((T, N, m, F))
     
 
     indicators_NmF = thetas[None, None, :, None] < all_forecaster_preds_all_dates[:,:,None,:]
@@ -160,11 +161,15 @@ def omniprediction_multiq_online_v2(Y: pd.Series, forecasts_dict: dict, unit: in
         # Step 2: Compute expected score under P_t (vectorized)
         phat_score = k_star_prob[:, None] * elementary_scores_grid_N((k_star), y_t, thetas, alpha_list) + \
             (1 - k_star_prob[:, None]) * elementary_scores_grid_N((k_star + 1), y_t, thetas, alpha_list)
+        pb_loss_t = k_star_prob * pinball_loss(k_star, y_t, alpha_list[None,:]) / m + \
+            (1 - k_star_prob) * pinball_loss(k_star + 1, y_t, alpha_list[None,:]) / m
+        
         omni_error_history[t,:,:] = phat_score
+        pb_loss_history[t,:] = pb_loss_t
         
         f_scores = elementary_scores_grid_N_F(forecaster_preds, y_t, thetas, alpha_list)
         forecasters_preds_history[t,:,:] = forecaster_preds
-        forecasters_score_history[t,:,:,:] = f_scores
+        # forecasters_score_history[t,:,:,:] = f_scores
         
         assert phat_score.shape == (N, m), f'phat_score.shape: {phat_score.shape}, N: {N}, m: {m}'
         assert f_scores.shape == (N, m, F), f'f_scores.shape: {f_scores.shape}, N: {N}, m: {m}, F: {F}'
@@ -183,11 +188,11 @@ def omniprediction_multiq_online_v2(Y: pd.Series, forecasts_dict: dict, unit: in
     omni_score_trace = omni_error_from_scores(omni_error_history)
     assert omni_score_trace.shape == (T,)
 
-    forecasters_score_trace = omni_error_from_scores(forecasters_score_history)
-    assert forecasters_score_trace.shape == (T, F)
+    # forecasters_score_trace = omni_error_from_scores(forecasters_score_history)
+    # assert forecasters_score_trace.shape == (T, F)
 
-    best_forecaster_score_trace = forecasters_score_trace.min(axis=1)
-    
+    # best_forecaster_score_trace = forecasters_score_trace.min(axis=1)
+     
     # Theoretical bound
     # theoretical_bound = np.sqrt(np.log(m * F) / T)
     # print(f"\nTheoretical omniprediction guarantee:")
@@ -200,11 +205,12 @@ def omniprediction_multiq_online_v2(Y: pd.Series, forecasts_dict: dict, unit: in
         # 'w_history': w_history,
         'minimax_value_history': minimax_value_history, # (T,)
         'omni_error_history': np.max(omni_error_history, axis=(1,2)),   # (T,) 
-        'forecasters_preds_history': forecasters_preds_history, # (T, N, F)
+        # 'forecasters_preds_history': forecasters_preds_history, # (T, N, F)
         # 'forecasters_score_history': forecasters_score_history, # (T, N, m, F)
         'omni_score_trace': omni_score_trace,   # (T,)
-        'forecasters_score_trace': forecasters_score_trace, # (T, F)    
-        'best_forecaster_score_trace': best_forecaster_score_trace, # (T,)
+        # 'forecasters_score_trace': forecasters_score_trace, # (T, F)    
+        # 'best_forecaster_score_trace': best_forecaster_score_trace, # (T,)
+        'pb_loss_history': pb_loss_history,
         'thetas': thetas,
 
         'Y': Y,

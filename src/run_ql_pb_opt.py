@@ -175,12 +175,12 @@ def ql_pb_opt(Y: pd.Series, forecasts_dict: dict, unit: int = 100,
     
         'pinball_pb_loss_history': pinball_pb_loss_history, # (T, N)
         'ql_pb_loss_history': ql_pb_loss_history, # (T, N)
-        'forecasters_pb_loss_history': forecasters_pb_loss_history, # (T, N, F)
-        'best_f_pb_loss_trace': ql_error_from_pb_loss(forecasters_pb_loss_history).min(axis=1), # (T,)
+        # 'forecasters_pb_loss_history': forecasters_pb_loss_history, # (T, N, F)
+        #'best_f_pb_loss_trace': ql_error_from_pb_loss(forecasters_pb_loss_history).min(axis=1), # (T,)
 
         'eta': eta,
-        'forecasters_preds_history': forecasters_preds_history, # (T, N, F)   
-        'best_forecaster_score_trace': best_forecaster_score_trace,
+        # 'forecasters_preds_history': forecasters_preds_history, # (T, N, F)   
+        # 'best_forecaster_score_trace': best_forecaster_score_trace,
         'Y': Y,
         'round_Y_F': round_Y_F,
         'dates_list': dates_list,

@@ -195,7 +195,7 @@ def single_q_minmax_solver2_v2(    # for multi-q case. Should be able to merge w
     if np.isclose(Bk_pre[j_opt_pre], eq_value, rtol=0, atol=tol):
         return {
             "phat": j_opt_converter(j_opt_pre, thetas),
-            "k_star": j_opt_pre,
+            "k_star": j_opt_converter(j_opt_pre, thetas),
             "k_star_prob": 1.0,
         }
     # assert Bk_pre[j_opt_pre] < eq_value + tol, f"j_(n-1)*: {j_opt_pre}, Bk_pre[j_opt_pre]: {Bk_pre[j_opt_pre]}, eq_value: {eq_value}"
@@ -226,10 +226,15 @@ def single_q_minmax_solver2_v2(    # for multi-q case. Should be able to merge w
             phat = np.random.choice([j_opt_converter(k_star, thetas), j_opt_converter(k_star+1, thetas)], p=[k_star_prob, 1.0-k_star_prob])
             return {
                 "phat": phat,
-                "k_star": k_star,
+                "k_star": j_opt_converter(k_star, thetas),
                 "k_star_prob": k_star_prob,
             }
-
+    if np.isclose(Bk_pre[j_opt_n], eq_value, rtol=0, atol=tol):
+        return {
+            "phat": j_opt_converter(j_opt_n, thetas),
+            "k_star": j_opt_converter(j_opt_n, thetas),
+            "k_star_prob": 1.0,
+        }
     assert False, "Single-q search for multi-q optimiation ERROR. Should not reach here." + f'j_opt_pre: {j_opt_pre}, j_opt_n: {j_opt_n}, eq_value: {eq_value}, Bk_pre: {Bk_pre}'
 
 
