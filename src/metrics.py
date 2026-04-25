@@ -333,6 +333,18 @@ def ql_error_from_pb_loss(pb_loss: np.ndarray):
     else:
         raise ValueError(f"scores.ndim: {pb_loss.ndim}")
 
+
+def wql_omni_error_from_pb_loss(pb_loss: np.ndarray):
+    # scores: (T, N, ..)
+    # return: (T, ..)
+    if pb_loss.ndim == 2:
+        return np.max(pb_loss.cumsum(axis=0), axis=1) / (np.arange(pb_loss.shape[0]) + 1)
+    elif pb_loss.ndim == 3:
+        return np.max(pb_loss.cumsum(axis=0), axis=1) / (np.arange(pb_loss.shape[0])[:, None] + 1)
+    else:
+        raise ValueError(f"scores.ndim: {pb_loss.ndim}")
+
+
 def ql_error_from_pb_loss_multiH(pb_loss: np.ndarray):
     # scores: (T, H, N, ..)
     # return: (T, ..)
