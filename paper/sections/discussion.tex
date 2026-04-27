@@ -1,0 +1,19 @@
+\section{Discussion}
+\label{sec:discussion}
+
+In this paper, we introduce a model aggregation algorithm (Algorithm \ref{alg:omni-twoplayer_online_multi_q}) that minimizes the regret with respect to given base forecasters' predictions, across all scoring functions that are consistent for multiple quantile functionals. We state and prove $O(1/\sqrt{T})$ regret bound for our algorithm (Theorem \ref{thm:omni-twoplayer_online_multi_q}), and also provide time-efficient implementation of our algorithm (Appendix \ref{appsubsec:multi_q_fast}). In empirical study using COVID-19 hospitalization forecasting data, we show that our algorithm consistently outperforms existing ensemble models: COVIDhub-4\_week\_ensemble and JHUAPL-SLPHospEns, and that the improvement in performance is larger when the prediction is more difficult, i.e., the base forecasters' has higher error in predicting the ground truth $Y_t$. 
+
+We note that this omniprediction framework can be extended to multi-horizon prediction task, where the ground truth $Y_t$ and base forecasters' predictions $f_b^n(t)$ are not scalars but vectors. By denoting such vector ground truth and vector predictions as $Y_t = (Y_{t,1}, ..., Y_{t,H})$ and $f_b^n(t) = (f_b^n(t,1), ..., f_b^n(t,H))$, respectively, we can define the omniprediction objective for multiple-horizon prediction as
+\[
+\sup_{S \in \cs,\, b \in [B], h \in [H]} \frac{1}{T} \sum_{t=1}^T \E_{p_{n,h} \sim P_{n,h}(t)} [S(\{p_{n,h}\}_{n=1}^N, Y_{t,h})] - \E[S(\{f_b^n(t,h)\}_{n=1}^N, Y_{t,h})],
+\]
+which means we want to minimize the maximum of regret for each horizon rather than the average of regret over all horizons, which is commonly used in practice. Then, with Algorithm \ref{alg:omni-twoplayer_online} in hand, the task reduces into solving the following minimax program:
+\begin{align*}
+    \min_{P_{n,h} \in \Delta_m, \forall n,h} \max_{P_{y,h} \in \Delta_m, \forall h} \sum_{h=1}^H  \sum_{n=1}^N \sum_{b=1}^B  w_{ibh}^n \E_{p_{n,h} \sim P_{n,h}, Y_h \sim P_{y,h}}[S_{n,i}(p_{n,h}, Y_h) - S_{n,i}(f_b^n(t,h), Y_h)].
+\end{align*}
+However, this minimax program is of form 
+\[
+    \min_{P_{n,h} \in \Delta_m, \forall n,h} \max_{P_{y,h} \in \Delta_m, \forall h} \sum_{h=1}^H g_h(\{P_{n,h}\}_{n=1}^N, P_{y,h}) 
+    = \sum_{h=1}^H \min_{P_{n,h} \in \Delta_m, \forall n} \max_{P_{y,h} \in \Delta_m} g_h(\{P_{n,h}\}_{n=1}^N, P_{y,h}).
+\]
+and this reduces into solving $H$ minimax program of form \eqref{eq:minimax_Pt_multi_q}, solution of which is provided in Theorem \ref{thm:minimax_negative_multi_q}, separately for each horizon. Therefore, running Algorithm \ref{alg:omni-twoplayer_online_multi_q} for each horizon separately, and combining the solutions together will solve the omniprediction problem for multiple-horizon prediction.

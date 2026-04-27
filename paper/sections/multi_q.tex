@@ -195,6 +195,22 @@ Putting all these together, we now present an upper bound for the omniprediction
 %   This follows as a straightforward extension of Theorem \ref{thm:omni-twoplayer_online_q}, using the fact that the value of the minimax program is negative, as established in Theorem \ref{thm:minimax_negative_multi_q}.
 % \end{proof}
 
+% We conclude this subsection with proving that the range of future ground truth $Y_t$ or base forecasters' predictions $f_b^n(t)$ is not required to run the algorithm. We can just start with  any discretization grid, then simply expand the grid whenever $Y_t$ or $f_b^n(t)$ exceeds the current grid. The following proposition proves that the output $\hat{P}(t)$ of Algorithm \ref{alg:omni-twoplayer_online_multi_q} does not change even if we started with narrower range then expand the range to cover the new values.
+% \begin{theorem} \label{thm:grid_expansion}
+%   Suppose $Y_t, f_b^n(t) \in \{0, 1/m, ..., 1\}$ for $\forall t$. Let $\hat{P}(t)$ and $\hat{P}'(t)$ be output of Algorithm \ref{alg:omni-twoplayer_online_multi_q} with discretization grid $\{0, 1/m, ..., (m-1)/m, 1\}$ and $\{-1, -(m-1)/m, ..., (2m-1)/m, 2\}$, respectively. Then, the output $\hat{P}(t) = \hat{P}'(t)$.
+% \end{theorem}
+% \begin{proof}
+% Let $\theta_i = \frac{i}{m} - \frac{1}{2m}$. Denote the algorithm that uses the grid $\{\theta_i\}_{i=1}^{m}$ by Algorithm A and denote the algorithm that uses the grid $\{\theta_i\}_{i=-m+1}^{2m}$ by Algorithm B.
+% We first compare the $V_n^*$ from Algorithm A and Algorithm B. $V_n(j)$ of Algorithm B is as follows. We use the notation $w_i^s$, $\one_i^s$, and $\one_B$ from the proof of Lemma~\ref{lem:jn_sort} in Appendix \ref{pf:jn_sort}.
+% \begin{align*}
+%   V_n(j) = \left( \sum_{i=j+1}^{2m} \sum_{s=1}^{n} w_i^s \cdot \one_i^s + \sum_{i=-m+1}^{j} \sum_{s=n+1}^{N}  w_i^s \cdot (\one_B - \one_i^s) \right).
+% \end{align*}
+% Now note that since $f_b^n(t) \in [0,1]$, $\one_i^s = \mathbb{0}_B$ for $i > m$ and $\one_i^s = \one_B$ for $i \leq 0$. Therefore, the above expression simplifies to
+% \begin{align*}
+%   V_n(j) = \left( \sum_{i=j+1}^{m} \sum_{s=1}^{n} w_i^s + \sum_{i=1}^{j} \sum_{s=n+1}^{N}  w_i^s \right).
+% \end{align*}
+% From the proof of Corollary \ref{cor:P_n_support} in Appendix \ref{pf:P_n_support}, we know that $j_n^*$ (of Algorithm B), the minimizer of $V_n(j)$, lies in $[1, m]$
+% \end{proof}
 
 
 \subsection{Comparison to running separate single quantile level omniprediction for each quantile level} \label{subsec:separate_multi_q}
