@@ -1,144 +1,195 @@
-\section{Experiments}\label{sec:experiments}
-We use COVID-19 hospitalization data from \hyperlink{https://delphi.cmu.edu/forecast-eval/}{DelPhi Group's Forecast Evaluation Dashboard}. The data contains $1$, $2$, $3$, $4$- week ahead forecasts from $20+$ forecasters. {\color{blue} citations}. With these \textit{base forecasters}, we run Algorithm \ref{alg:omni-twoplayer_online_multi_q} and compare the output with that from the ensemble model provided by DelPhi Group, and also with other online algorithms. With base forecasters $\{\hat{f}_j\}_{j=1}^F$ that provide $\{\tau_n\}_{n=1}^N$-level quantile forecasts $\{\hat{f}_j^n(t)\}_{n=1}^N$ for each time $t$, the omniprediction error is given by
+\section{Empirical results}\label{sec:experiments}
+We use COVID-19 hospitalization data, which can be downloaded from \href{https://forecast-eval.s3.us-east-2.amazonaws.com/hospitalizations.zip}{this link}. The observed hospitalizations are provided by the U.S. Department of Health \& Human Services and correspond to the sum of all adult and pediatric COVID-19 hospital admissions. The hospitalization forecasts are obtained from the \href{https://github.com/reichlab/covid19-forecast-hub/}{COVID-19 Forecast Hub GitHub repository} \cite{cramer2022covidhub}. The dataset contains state-level hospitalization forecasts (covering the 50 states and the District of Columbia) as well as the U.S. aggregate (hereafter, US-agg), totaling 52 series for $N=23$ quantile levels at $h$ weeks ahead, for horizons $h \in \{1,2,3,4\}$. We restrict our attention to forecasts from $B=18$ forecasting teams (which we refer to as \emph{base forecasters}) and two ensemble models: COVIDhub-4\_week\_ensemble (COVIDhub-Ens) and JHUAPL-SLPHospEns (JHUAPL-SLPEns), both of which are constructed as ensembles of base forecasters. We consider $T=127$ weeks of data from December 2020 to June 2023. Additional details are deferred to Appendix~\ref{appsubsec:experiment_details}.
 
-\begin{align}\label{eq:omni-multi-q-error-discrete}
-\sup_{S \in \cs,\, j \in [F]} \frac{1}{T} \sum_{n=1}^N \sum_{t=1}^T \E_{p \sim \hat{P}_t^n} [S(p, Y_t)] - \E[S(\hat{f}_j^n(t), Y_t)] 
-% \leq \co\left(\sqrt{\frac{\log (mNF)}{T}}\right).
+We run Algorithm~\ref{alg:omni-twoplayer_online_multi_q}, which we refer to as \textit{our algorithm} hereafter, on the $B=18$ base forecasters. We compare its predictions with those from the two ensemble models, as well as with Algorithm~\ref{alg:wql_hedge}, which we refer to as \textit{Hedge-QL} hereafter.
+
+\paragraph{Metrics}
+We primarily use two metrics to evaluate performance: the omniprediction error and the quantile loss. Given base forecasters $\{\hat{f}_b^n\}_{b=1}^B$ that provide $\{\tau_n\}_{n=1}^N$-level quantile forecasts $\{\hat{f}_b^n(t)\}_{n=1}^N$ at each time $t$, the (cumulative) \textit{omniprediction error} at time $t$ for a forecast $\{P_t^n\}_{n=1}^N$ is defined as
+\begin{align}\label{eq:omni_error_def}
+\sup_{S \in \cs,\, b \in [B]} \frac{1}{t} \sum_{n=1}^N \sum_{s=1}^t \E_{p \sim P_s^n} [S(p, Y_s)] - S(\hat{f}_b^n(s), Y_s).
 \end{align}
 
-\subsection{Expriment settings}
-\subsubsection{Hyperparameters}
-We use the following settings for the experiments:
-\begin{itemize}
-    \item Dates: 2021-02-23 to 2023-06-05 (119 weeks) 
-    \item Number of quantile levels $N = 23$: 
-    \begin{multline*}
-      [0.01,~0.025,~0.05,~0.1,~0.15,~0.2,~0.25,~0.3,~0.35,~0.4,~0.45,~0.5, \\
-      0.55,~0.6,~0.65,~0.7,~0.75,~0.8,~0.85,~0.9,~0.95,~0.975,~0.99]
-    \end{multline*}
-    \item Number of base forecasters $F = 12$: \texttt{[CU-select, GT-DeepCOVID, Karlen-pypm, JHU\_IDD-CovidSP, MOBS-GLEAM\_COVID, USC-SI\_kJalpha, JHUAPL-Bucky, JHUAPL-SLPHospEns, JHUAPL-Gecko, COVIDhub-baseline, COVIDhub-4\_week\_ensemble, COVIDhub-trained\_ensemble]}
-    % \item Discretization unit: $100$ for daily data (Section \ref{subsec:daily_data}), $1,000$ for weekly data (Section \ref{subsec:weekly_data})
-    \item Discretization unit: $500$ (The base forecast values varies from $0$ to $1,301,622$)
-    \item Each experiment is run $10$ times with different random seeds.
-\end{itemize}
-
-There are two separate learning rates appear in Algorithm \ref{alg:omni-twoplayer_online_multi_q}: $\eta_w$ and $\eta_f$. $\eta_w$ updates the weights $w_i^n$ on each elementary score functions $S_i^n$, where the weighed sum of elementary scores is the objective function of minimax in every timestamp. $\eta_f$ is the learning rate for the forecaster selection $v_{i,j}$, updating the best forecaster for each elementary score function in each iteration. Due to Theorem \ref{thm:omni-twoplayer_online_multi_q}, the learning rate $\eta_w$ should be set to $\eta_w = O(\sqrt{\frac{\log (mNF)}{T}})$ and $\eta_f$ should be set to $\eta_f = O(\sqrt{\frac{\log F}{T}})$. We try different multiples of theoretical values of $\eta_w$ and $\eta_f$ to see how the performance of the omniprediction algorithm varies.
-\begin{enumerate}
-    \item $\eta_w$ multiplier: $0.5, 1, 2, 4$
-    \item $\eta_f$ multiplier: $1, 2, 4, 8, 16$
-\end{enumerate}
-Hereafter, we simply write $\eta_w = C$ for $\eta_w = C \sqrt{\frac{\log (mNF)}{T}}$ and $\eta_f = C$ for $\eta_f =  2C \sqrt{\frac{\log F}{T}}$.
-
-\subsubsection{Other online algorithms to compare}
-We consider two online algorithms for comparison. 
-\ql applies the Hedge algorithm to optimize the aggregate quantile loss, whereas \pb applies the Hedge algorithm to optimize the pinball loss at each quantile level separately. 
-
-Specifically, \ql uses the following loss function at time $t$:
+We define the (cumulative) \textit{quantile loss} at time $t$ as
 \[
-\ell_{\ql}(y_t, \hat{f}_j(t)) = \sum_{n=1}^N \rho_{\tau_n}(y_t - \hat{f}_j^n(t)), \quad \forall j \in [F],
+\sum_{s=1}^t \sum_{n=1}^N \E_{p \sim P_s^n} [\rho_{\tau_n}(Y_s - p)],
 \]
-where $\rho_{\tau_n}(x) = \tau_n |x| \one(x \geq 0) + (1-\tau_n) |x| \one(x < 0)$ denotes the pinball loss at quantile level $\tau_n$. 
-The algorithm then selects a single base forecast to estimate the quantiles at all quantile levels.
+where $\rho_{\tau}(x) = \tau x \one(x \geq 0) + (1-\tau) |x| \one(x < 0)$ is the pinball loss at quantile level $\tau$. Additionally, we define the \textit{instantaneous quantile loss} at time $t$ as $\sum_{n=1}^N \E_{p \sim P_t^n} [\rho_{\tau_n}(Y_t - p)]$.
 
-In contrast, \pb runs the Hedge algorithm separately for each quantile level. 
-For each $\tau_n$, $n \in [N]$, \pb uses the loss
-\[
-\ell_{\pb, n}(y_t, \hat{f}_j^n(t)) = \rho_{\tau_n}(y_t - \hat{f}_j^n(t)), \quad \forall j \in [F], \forall n \in [N].
-\]
-It then selects a base forecast for each quantile level to predict the corresponding quantile. Note that the resulting vector of quantile estimates may exhibit quantile crossing. For a fair comparison, we evaluate \ql, \pb, and the omniprediction algorithm using the same value of $\eta_f$. That is, for each value of $\eta_f$, we compare the outputs of all three algorithms using that value.
+\paragraph{Discretization}
+As introduced in Section~\ref{subsec:discretization}, we discretize both the predictions and the ground truth into a finite set of values. We use grid spacings chosen from $\{2,5,10,20,50,100,500\}$, depending on the range of forecast values in each (horizon, region) dataset. This results in more than $500$ grid points for all $208 = 4 \times 52$ datasets, and more than $1{,}000$ grid points for over $150$ datasets. Additional details are provided in Appendix~\ref{appsubsec:experiment_details}.
 
-Lastly, we compare our omniprediction algorithm output with one of base forecasters, \textbf{COVIDhub-trained\_ensemble} (COVIDhub-ens). COVIDhub-ens is the ensemble model provided by DelPhi Group.
+\paragraph{Learning rates}
+Our algorithm and Hedge-QL involve learning rates as hyperparameters. In this work, we do not explicitly tune these learning rates. Instead, we evaluate each algorithm over a range of learning rates, report the best performance achieved for each metric, and provide a sensitivity analysis. For each metric, we select the best-performing instance in hindsight over the set of learning rates. In plots and legends, these are denoted by \textit{*Our algorithm} and \textit{*Hedge-QL}. In addition, for certain plots, we also report performance when using a fixed learning rate. 
 
+In this section, when we refer to our algorithm with learning rate $c$, the actual learning rate is $c \sqrt{\log (mNB) / T}$. Similarly, for Hedge-QL with learning rate $c$, the actual learning rate is $c \sqrt{\log B / T}/Y_{\text{max}}$, where $m$ is the grid size, $N$ is the number of quantile levels, $B$ is the number of base forecasters, $T$ is the number of time steps, and $Y_{\text{max}}$ is the maximum value of the ground truth in each (horizon, region) dataset. $c=\{10^{i/4} \mid i=-12,...,5 \}$ were used for our algorithm and $c=\{10^{i/4} \mid i=-12,...,16\}$ were used for Hedge-QL. 
 
+When it comes to practice, we note that one can incorporate AdaHedge-style updates \cite{de2014adahedge} to adaptively update the weights $w_{ib}^n$ in Algorithm~\ref{alg:omni-twoplayer_online_multi_q}, thereby making our algorithm learning-rate-free with slightly modified theoretical guarantees. Alternatively, one can introduce an additional meta-learning layer that adaptively combines multiple learning rates, as in \cite{gradu2023adap,gibbs2024aci}.
 
 
 
+\subsection{Our algorithm's forecasts compared to other models}
+In this subsection, we compare the quantile forecasts of our algorithm with those from COVIDhub-Ens, JHUAPL-SLPEns, and Hedge-QL. Figure \ref{fig:quantile_estimates_us} shows the quantile forecasts for US-agg weekly COVID-19 hospitalizations at $1$-week-ahead and $4$-week-ahead horizons.
 
-% \subsection{Trace of omniprediction error and quantile loss} 
+\begin{figure}[htbp]
+  \centering
+  \begin{subfigure}{0.98\textwidth}
+      \centering
+      \includegraphics[width=\textwidth]{../fig/Quantile_estimates_US_1wk.png}
+      \caption{$1$-week-ahead prediction.}
+      \label{fig:quantile_estimates_us_1wk}
+  \end{subfigure}
 
-% \begin{figure}[h]
-%     \centering
-%     \includegraphics[width=.95\textwidth]{fig/omni_error_trace.png}
-%     \caption{Omniprediction error \eqref{eq:omni-multi-q-error-discrete} over time with $\eta_w=\eta_f=1$. Not only omniprediction algorithm (Theorem \ref{thm:omni-twoplayer_online_multi_q}) but other three algorithms also converge to $0$ (no theoretical guarantee). {\color{blue} $\sqrt{1/T}$ curve check}}
-%     \label{fig:omni_error_convergence}
-% \end{figure}
+  \vspace{0.5em}
 
-% \begin{figure}[h]
-%     \centering
-%     \includegraphics[width=.95\textwidth]{fig/ql_loss_trace.png}
-%     \caption{Quantile loss over time with $\eta_w=\eta_f=1$. Interestingly, omniprediction algorithm achieves lower quantile loss than other three algorithms, although QL-opt and Pinball-opt more directly optimize the quantile loss.}
-%     \label{fig:ql_loss_trace}
-% \end{figure}
+  \begin{subfigure}{0.98\textwidth}
+      \centering
+      \includegraphics[width=\textwidth]{../fig/Quantile_estimates_US_4wk.png}
+      \caption{$4$-week-ahead prediction.}
+      \label{fig:quantile_estimates_us_4wk}
+  \end{subfigure}
+
+  \caption{
+  Quantile forecasts for US-agg weekly COVID-19 hospitalizations at $1$-week-ahead and $4$-week-ahead horizons. The learning rate for \textit{*Hedge-QL} and \textit{*Our algorithm} is selected to achieve the best omniprediction error at the last time step $T$. The black curve shows the observed hospitalizations. The blue shaded regions show nested quantile prediction bands: darker regions correspond to more central quantile intervals, while lighter regions correspond to wider intervals.
+  }
+  \label{fig:quantile_estimates_us}
+\end{figure}
+
+COVIDhub-Ens is constructed as a weighted average of quantile estimates, whereas JHUAPL-SLPEns first simulates predictive distributions from the submitted quantile estimates and then averages the resulting CDFs \cite{jhuapl_slphospens}. Hedge-QL is based on weighted averages of quantile estimates. It is well-known that averaging quantile forecasts tends to produce sharper predictive intervals than averaging predictive distributions or probabilities~\cite{lichtendahl2013qorcdf}. 
+
+Consistent with this distinction, Figure~\ref{fig:quantile_estimates_us} shows that COVIDhub-Ens and \textit{*Hedge-QL} produce sharper quantile bands, while JHUAPL-SLPEns produces wider predictive bands.Interestingly, although our algorithm only uses the quantile estimates from the base forecasters, it produces relatively wider predictive bands than COVIDhub-Ens and \textit{*Hedge-QL}, while remaining somewhat sharper than JHUAPL-SLPEns but stil track the observed hospitalization trajectory well. \bigskip
+
+Next, Figure \ref{fig:omni_error_over_time} shows the cumulative omniprediction error over time of each model for $1$- to $4$-week-ahead forecasting horizons. The figure shows that as the prediction task becomes more challenging (i.e., for longer horizons such as $3$- and $4$-week-ahead forecasts), \textit{*our algorithm} outperforms the competing methods. 
+Moreover, when using a fixed learning rate $c=1.0$, which minimizes the upper bound of omniprediction error in Theorem \ref{thm:omni-twoplayer_online_multi_q}, it consistently outperforms both ensemble baselines, COVIDhub-Ens and JHUAPL-SLPEns, for $2$-, $3$-, and $4$-week-ahead predictions. Notably, for the $4$-week-ahead horizon, it also outperforms \textit{*Hedge-QL}.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{../fig/Omni_error_over_time.png}
+  \caption{
+  Cumulative omniprediction error \eqref{eq:omni_error_def} over time for $1$- to $4$-week-ahead forecasting horizons for US-agg. For \textit{*our algorithm} and \textit{*Hedge-QL}, the legend in each panel shows the learning rate that attains the best performance. Lower values indicate better performance.}
+  \label{fig:omni_error_over_time}
+\end{figure}
+\bigskip
+
+% \begin{wrapfigure}{r}{0.6\textwidth}
+%   \vspace{-1em}
+%   \centering
+%   \includegraphics[width=0.57\textwidth]{../fig/Error_diff_density.png}
+%   \caption{
+%   State-level comparison of performance relative to \textit{*our algorithm}. The left column shows differences in cumulative omniprediction error \eqref{eq:omni_error_def}, and the right column shows differences in cumulative quantile loss, computed as competitor minus \textit{*our algorithm}. Each curve shows a kernel density estimate of these differences across the $51$ state-level series for a given forecasting horizon. Values to the right of zero indicate better performance of \textit{*our algorithm}; the vertical dash-dotted line marks zero.
+%   }
+%   \label{fig:error_diff_density}
+%   \vspace{-1em}
+% \end{wrapfigure}
+
+Figure~\ref{fig:error_diff_density} shows that the advantage of \textit{*our algorithm} over competing methods extends beyond the US-agg results to the state level. Across most state-level series, \textit{*our algorithm} achieves lower omniprediction error and quantile loss than both ensemble baselines, COVIDhub-Ens and JHUAPL-SLPEns. This improvement becomes more pronounced for longer forecasting horizons: as the horizon increases, the distributions shift further to the right, indicating larger performance gains.
+
+Compared to \textit{*Hedge-QL}, \textit{*our algorithm} still demonstrates consistent improvements, although the margin is smaller than in comparisons with the ensemble baselines. Overall, these results suggest that \textit{*our algorithm} is robust across regions and has a larger advantage in more challenging, longer-horizon forecasting tasks, both in omniprediction error and quantile loss.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.7\textwidth]{../fig/Error_diff_density.png}
+  \caption{
+  State-level comparison of performance relative to \textit{*our algorithm}. Each row corresponds to each competing method. The left column shows differences in cumulative omniprediction error \eqref{eq:omni_error_def}, and the right column shows differences in cumulative quantile loss, computed as competitor minus \textit{*our algorithm}. Each curve shows a kernel density estimate of these differences across the $51$ state-level series for a given forecasting horizon. Values to the right of zero indicate better performance of \textit{*our algorithm}; the vertical dash-dotted line marks zero.
+  }
+  \label{fig:error_diff_density}
+\end{figure}
+\bigskip
+
+% \begin{wrapfigure}{r}{0.42\textwidth}
+%   \vspace{-1em}
+%   \centering
+%   \includegraphics[width=0.40\textwidth]{../fig/Difficulty_plot.png}
+%   \caption{
+%   Comparison of instantaneous quantile loss between \textit{*our algorithm} (x-axis) and \textit{*Hedge-QL} (y-axis). 
+%   Each point corresponds to a (horizon, location, time) tuple, for a total of $4 \times 51 \times 127 = 25{,}908$ points. 
+%   The dashed line denotes $y=x$, so points above the line indicate better performance of \textit{*our algorithm}. 
+%   Color represents task difficulty, defined as the square root of the average pinball loss of base forecasters, and clipped to the range $[0.2, 0.7]$, with red indicating more difficult instances and blue indicating easier ones.
+%   }
+%   \label{fig:ql_scatter_difficulty}
+%   \vspace{-1em}
+% \end{wrapfigure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.6\textwidth]{../fig/Difficulty_plot.png}
+  \caption{
+  Comparison of instantaneous quantile loss between \textit{*our algorithm} (x-axis) and \textit{*Hedge-QL} (y-axis). Each point corresponds to a (horizon, location, time) tuple. %, for a total of $4 \times 51 \times 127 = 25{,}908$ points. 
+  Color represents task difficulty, defined as \eqref{eq:difficulty_def} and clipped to the range $[0.2, 0.7]$, with red indicating more difficult instances and blue indicating easier ones.
+  The dashed line denotes $y=x$, and points above the line indicate better performance of \textit{*our algorithm}. 
+  }
+  \label{fig:ql_scatter_difficulty}
+\end{figure}
 
 
-% \begin{figure}[h]
-%     \centering
-%     \includegraphics[width=.95\textwidth]{fig/all_q_estimates.png}
-%     \caption{The plot shows all the quantile estimates from each algorithm for 4-week ahead prediction task. Algorithm complexity get higher from left to right. We plot colored bands where the lightest opacity connects the 0.01 and 0.99 level forecasts, the next lightest connects the 0.025 and 0.975 level forecasts, and so on. The black line represents the true value.}
-%     \label{fig:all_q_estimates}
-% \end{figure}
+Consistent with the trends observed above, Figure~\ref{fig:ql_scatter_difficulty} shows that \textit{*our algorithm} performs particularly well on more difficult instances. The color represents the difficulty of prediction at (horizon, location, time) tuple, measured by the average pinball loss of base forecasters, which is calculated as follows:
+\begin{align}\label{eq:difficulty_def}
+\frac{1}{Y_t} \frac{1}{BN} \sum_{n=1}^N \sum_{b=1}^B \rho_{\tau_n}(Y_t - f_b(t)).
+\end{align}
+In particular, the darker (red) points are predominantly located above the $y=x$ line, indicating that \textit{*our algorithm} achieves lower quantile loss than \textit{*Hedge-QL} on harder prediction tasks.
 
 
-% \newpage
-% \subsection{Sensitivity to learning rates}
-% \subsubsection{Sensitivity to $\eta_w$}
-% See Figure \ref{fig:sens_etaw} for the results.
-% \begin{figure}[h]
-%     \begin{subfigure}[b]{0.95\textwidth}
-%         \centering
-%         \includegraphics[width=.95\textwidth]{fig/sens_etaw_1wk.png}
-%         \caption{1-week ahead prediction}
-%         \label{fig:sens_etaf_1wk}
-%     \end{subfigure}
-%     \begin{subfigure}[b]{0.95\textwidth}
-%         \centering
-%         \includegraphics[width=.95\textwidth]{fig/sens_etaw_2wk.png}
-%         \caption{2-week ahead prediction}
-%         \label{fig:sens_etaf_2wk}
-%     \end{subfigure}
-%     \begin{subfigure}[b]{0.95\textwidth}
-%         \centering
-%         \includegraphics[width=.95\textwidth]{fig/sens_etaw_3wk.png}
-%         \caption{3-week ahead prediction}
-%         \label{fig:sens_etaf_3wk}
-%     \end{subfigure}
-%     \begin{subfigure}[b]{0.95\textwidth}
-%         \centering
-%         \includegraphics[width=.95\textwidth]{fig/sens_etaw_4wk.png}
-%         \caption{4-week ahead prediction}
-%         \label{fig:sens_etaf_4wk}
-%     \end{subfigure}
-%     \caption{Omniprediction error and quantile loss sensitivity to $\eta_w$. The plot shows the mean and standard deviation across $10$ runs of omniprediction error and quantile loss at time $T$ (last timestamp). Fixed $\eta_f=2$. The omniprediction algorithm achieves lower omniprediction error and quantile loss than other three algorithms, across different $\eta_w$ values and datasets}
-%     \label{fig:sens_etaw}
-% \end{figure}
+\subsection{Sensitivity Analysis}
+\label{subsec:sensitivity}
+In this subsection, we show how the performance of \textit{our algorithm} varies with the learning rate. Figure~\ref{fig:sensitivity} shows the performance of \textit{our algorithm} as a function of the learning rate for $1$- to $4$-week-ahead horizons for US-agg data. It shows that \textit{our algorithm} outperforms the two ensemble baselines, COVIDhub-Ens and JHUAPL-SLPEns, for most combinations of forecasting horizon and learning rate. For the $4$-week-ahead horizon, in particular, \textit{our algorithm} achieves lower omniprediction error than \textit{*Hedge-QL} consistently across all learning rates except for a single choice. We observe that the quantile loss varies more smoothly as a function of the learning rate compared to the omniprediction error.  Although the overall trends of the two metrics are broadly similar, they do not coincide exactly.
 
-% \subsubsection{Sensitivity to $\eta_f$}
-% See Figure \ref{fig:sens_etaf} for the results.
-% \begin{figure}[h]
-%     \begin{subfigure}[b]{0.95\textwidth}
-%         \centering
-%         \includegraphics[width=.95\textwidth]{fig/sens_etaf_1wk.png}
-%         \caption{1-week ahead prediction}
-%         \label{fig:sens_etaf_1wk}
-%     \end{subfigure}
-%     \begin{subfigure}[b]{0.95\textwidth}
-%         \centering
-%         \includegraphics[width=.95\textwidth]{fig/sens_etaf_2wk.png}
-%         \caption{2-week ahead prediction}
-%         \label{fig:sens_etaf_2wk}
-%     \end{subfigure}
-%     \begin{subfigure}[b]{0.95\textwidth}
-%         \centering
-%         \includegraphics[width=.95\textwidth]{fig/sens_etaf_3wk.png}
-%         \caption{3-week ahead prediction}
-%         \label{fig:sens_etaf_3wk}
-%     \end{subfigure}
-%     \begin{subfigure}[b]{0.95\textwidth}
-%         \centering
-%         \includegraphics[width=.95\textwidth]{fig/sens_etaf_4wk.png}
-%         \caption{4-week ahead prediction}
-%         \label{fig:sens_etaf_4wk}
-%     \end{subfigure}
-%     \caption{Omniprediction error and quantile loss sensitivity to $\eta_f$. The plot shows the mean and standard deviation across $10$ runs of omniprediction error and quantile loss at time $T$ (last timestamp). Fixed $\eta_w=1$. The omniprediction algorithm achieves lower omniprediction error and quantile loss than other three algorithms, across different $\eta_f$ values and datasets}
-%     \label{fig:sens_etaf}
-% \end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \begin{subfigure}{0.98\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../fig/Sensitivity_omni.png}
+        \caption{Omniprediction error at time $T$ (US-agg).}
+        \label{fig:sensitivity_omni}
+    \end{subfigure}
+
+    \vspace{0.5em}
+
+    \begin{subfigure}{0.98\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../fig/Sensitivity_QL.png}
+        \caption{Quantile loss at time $T$ (US-agg).}
+        \label{fig:sensitivity_ql}
+    \end{subfigure}
+
+    \caption{
+      Sensitivity of \textit{our algorithm} to the learning rate. 
+      Each panel shows the performance of \textit{our algorithm} as a function of the learning rate (blue curve), while horizontal lines indicate the performance of the competing methods. 
+      The bottom plot shows the quantile loss relative to that of the best base forecaster. 
+      Lower values indicate better performance.
+    }
+    \label{fig:sensitivity}
+\end{figure}
+
+% \begin{wrapfigure}{r}{0.48\textwidth}
+%   \vspace{-1em}
+%   \centering
+%   \includegraphics[width=0.46\textwidth]{../fig/QL_std_rank.png}
+%   \caption{
+%     Distribution of standardized ranks of instantaneous quantile loss across all (horizon, location, time) tuples for the $51$ state-level series. 
+%     For each tuple, we rank the available forecasts by quantile loss and normalize the ranks to $[0,1]$. 
+%     Each row corresponds to a model, and the colored segments represent the empirical distribution of ranks grouped into quartiles. 
+%     Models are ordered by their first-quartile performance, with higher placement indicating better performance. 
+%     The visualization design is adapted from \cite{cramer2022violinplot}.
+%     }
+  
+%   \label{fig:rank_distribution}
+%   \vspace{-1em}
+% \end{wrapfigure}
+
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.8\textwidth]{../fig/QL_std_rank.png}
+  \caption{
+    Distribution of standardized ranks of instantaneous quantile loss across all (horizon, location, time) tuples for the $51$ state-level series. 
+    For each tuple, we rank the available forecasts by quantile loss and normalize the ranks to $[0,1]$. 
+    Each row corresponds to a model, and the colored segments represent the empirical distribution of ranks grouped into quartiles. 
+    Models are ordered by their first-quartile performance, with higher placement indicating better performance. 
+    The visualization design is adapted from \cite{cramer2022violinplot}.
+    }
+  
+  \label{fig:rank_distribution}
+\end{figure}
+
+Figure~\ref{fig:rank_distribution} shows that, in addition to \textit{*our algorithm} and \textit{*Hedge-QL}, our algorithm with a fixed learning rate is also ranked highly, outperforming the two ensemble baselines, COVIDhub-Ens and JHUAPL-SLPEns. 
+This indicates that our algorithm consistently achieves lower quantile loss across a wide range of horizons, locations, and time points, and that its performance is robust to the choice of learning rate.

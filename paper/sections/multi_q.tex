@@ -185,10 +185,10 @@ Putting all these together, we now present an upper bound for the omniprediction
 
 \begin{theorem}
   \label{thm:omni-twoplayer_online_multi_q}
-  For a set of quantile levels $\tau_1 < \tau_2 < ... < \tau_N$, let $\cs$ denote the class of scoring functions with representation \eqref{eq:multi_q_decomp_raw} with positive measures $\{H_{\tau_n}\}_{n=1}^N$ such that $\sum_{n=1}^N H_{\tau_n}(\R) \leq 1$ (the set of \textit{all} scoring functions that are consistent for the multiple quantile levels under mild regularity conditions). Consider a base forecasters $\{f_b\}_{b=1}^B$ that provides $\{\tau_n\}_{n=1}^N$-level quantile forecasts $\{f_b^n(t)\}_{n=1}^N$ at each time $t \in [T]$. With the target values $Y_t$, forecaster predictions $f_b^n(t)$ for $t \in [T], n \in [N], b \in [B]$ each taking values in a uniform grid of size $m$, and the learning rate $\eta = \sqrt{\frac{\log (mNB)}{T}}$, the output $\hat{P}_t = \{\hat{P}_t^n\}_{n=1}^N$ from Algorithm \ref{alg:omni-twoplayer_online_multi_q} achieves the following omniprediction error:
+  For a set of quantile levels $\tau_1 < \tau_2 < ... < \tau_N$, let $\cs$ denote the class of scoring functions with representation \eqref{eq:multi_q_decomp_raw} with positive measures $\{H_{\tau_n}\}_{n=1}^N$ such that $\sum_{n=1}^N H_{\tau_n}(\R) \leq 1$ (the set of \textit{all} scoring functions that are consistent for the multiple quantile levels under mild regularity conditions). Consider a base forecasters $\{f_b\}_{b=1}^B$ that provides $\{\tau_n\}_{n=1}^N$-level quantile forecasts $\{f_b^n(t)\}_{n=1}^N$ at each time $t \in [T]$. With the target values $Y_t$, forecaster predictions $f_b^n(t)$ for $t \in [T], n \in [N], b \in [B]$ each taking values in a uniform grid of size $m$, and the learning rate $\eta = c\sqrt{\frac{\log (mNB)}{T}}$, the output $\hat{P}_t = \{\hat{P}_t^n\}_{n=1}^N$ from Algorithm \ref{alg:omni-twoplayer_online_multi_q} achieves the following omniprediction error:
   \begin{align*}
   \sup_{S \in \cs,\, b \in [B]} \frac{1}{T} \sum_{n=1}^N \sum_{t=1}^T \E_{p_n \sim \hat{P}_n(t)} [S(p_n, Y_t)] - \E[S(f_b^n(t), Y_t)]
-  \leq 2 \left(\sqrt{\frac{\log mNB}{T}}\right)
+  \leq \left(c+\frac{1}{c}\right)\left(\sqrt{\frac{\log mNB}{T}}\right)
   \end{align*}
 \end{theorem}
 % \begin{proof}

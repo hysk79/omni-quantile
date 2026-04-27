@@ -126,7 +126,7 @@ We first prove that the value of the minimax program \eqref{eq:minimax_q} is non
 
 
 \begin{proof}[Proof of Theorem \ref{thm:omni-twoplayer_online_q}]
-Observe that $S_{\alpha, i}(x,y) \in \{0, \alpha, 1-\alpha\}$ and $|S_{\alpha, i}(x_1,y_1) - S_{\alpha, i}(x_2,y_2)| \leq 1$. Without loss of generality, we assume that $Y_t, f_b(t) \in \{0, \frac{1}{m}, 1\}$ for all $t \in [T], b \in [B]$, as this construction extends to any bounded interval $[-B_\ell, B_u]$ via rescaling. Also note that $S_{\alpha, \theta}(p, Y_t)$ or $S_{\alpha, \theta}(f_b(t), Y_t)$ with $\theta \notin [-B_\ell, B_u]$ is always zero for $p \in [-B_\ell, B_u]$. Therefore non-negative mass of $H$ on $\R \backslash [-B_\ell, B_u]$ is irrelevant to the omniprediction error.
+Observe that $S_{\alpha, i}(x,y) \in \{0, \alpha, 1-\alpha\}$ and $|S_{\alpha, i}(x_1,y_1) - S_{\alpha, i}(x_2,y_2)| \leq 1$. Without loss of generality, we assume that $Y_t, f_b(t) \in \{0, \frac{1}{m}, ..., 1\}$ for all $t \in [T], b \in [B]$, as this construction extends to any bounded interval $[-B_\ell, B_u]$ via rescaling. Also note that $S_{\alpha, \theta}(p, Y_t)$ or $S_{\alpha, \theta}(f_b(t), Y_t)$ with $\theta \notin [-B_\ell, B_u]$ is always zero for $p \in [-B_\ell, B_u]$. Therefore non-negative mass of $H$ on $\R \backslash [-B_\ell, B_u]$ is irrelevant to the omniprediction error.
 
 Regret bound of hedge algorithm (Theorem \ref{appthm:hedge_regret}) gives the following:
 \begin{align}
@@ -139,8 +139,8 @@ Putting these together with previous lemmas, we have:
 \begin{align*}
   & \sup_{S \in S_\alpha,\, f \in \cf} \frac{1}{T} \sum_{t=1}^T \E_{p \sim \hat{P}(t)} [S(p, Y_t)] - S(f(t), Y_t) \\
   & \underset{\text{Lem. } \ref{lem:discretize_single_q}}{=} \sup_{i \in [m], b \in [B]} \frac{1}{T} \sum_{t=1}^T \E_{p \sim \hat{P}(t)} [S_{\alpha, i}(p, Y_t)] - S_{\alpha, i}(f(t), Y_t) \\
-  & \underset{Ieq. \eqref{ieq:hedge_w_update}}{\leq} \frac{1}{T} \sum_{t=1}^T \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}(t) \, \E_{p\sim \hat{P}(t)}\left[ S_{\alpha, i}(p, Y_t) - S_{\alpha, i}(f_b(t), Y_t) \right] + 2\left(\sqrt{\frac{\log mB}{T}}\right) \\
-  & \underset{\text{Lem. } \ref{lem:minimax_single_q_neg}}{\leq} 2\left(\sqrt{\frac{\log mB}{T}}\right).
+  & \underset{Ieq. \eqref{ieq:hedge_w_update}}{\leq} \frac{1}{T} \sum_{t=1}^T \sum_{i=1}^{m} \sum_{b=1}^B w_{ib}(t) \, \E_{p\sim \hat{P}(t)}\left[ S_{\alpha, i}(p, Y_t) - S_{\alpha, i}(f_b(t), Y_t) \right] + \left(c+\frac{1}{c}\right)\left(\sqrt{\frac{\log mB}{T}}\right) \\
+  & \underset{\text{Lem. } \ref{lem:minimax_single_q_neg}}{\leq} \left(c+\frac{1}{c}\right)\left(\sqrt{\frac{\log mB}{T}}\right).
 \end{align*}
 \end{proof} 
 
@@ -706,3 +706,31 @@ We introduce the well-known regret bound of the Hedge algorithm, which is used f
   \;+\; \frac{\log(m)}{\eta}.
   \]
   \end{theorem}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% NEW SECTION
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Experiment details and additional results}
+\subsection{Experiment details} \label{appsubsec:experiment_details}
+Below is the detailed information about the data. 
+\begin{itemize}
+  \item Horizon: 1, 2, 3, 4 weeks ahead
+  \item Location (total $52$): 51 state-level series (50 states + DC) and the U.S. aggregate series 
+  \item Dates: 2020-12-29 to 2023-06-05 (127 weeks)
+  \item Base forecasters (total $18$): CU-select, GT-DeepCOVID, COVIDhub-baseline, Karlen-pypm, JHU\_IDD-CovidSP, MOBS-GLEAM\_COVID, USC-SI\_kJalpha, JHUAPL-Bucky, JHUAPL-Gecko, MUNI-ARIMA, CMU-TimeSeries, UMass-trends\_ensemble, PSI-DICE, IHME-CurveFit, CUB\_PopCouncil-SLSTM, BPagano-RtDriven, LANL-GrowthRate, UVA-Ensemble
+  \item Ensemble models (total $2$): COVIDhub-4\_week\_ensemble (COVIDhub-Ens), JHUAPL-SLPHospEns (JHUAPL-SLPEns)
+  \item Quantile levels (total $23$): [0.01, 0.025, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 0.975, 0.99] 
+\end{itemize}
+
+Below is the grid spacing used for each region.
+\begin{itemize}
+  \item RI, ND, AK, VT, WY: 2
+  \item NM, ID, NE, WV, HI, NH, ME, DE, SD: 5
+  \item OR, UT, NV, IA, KS, MS, MT, DC: 10
+  \item VA, WA, AZ, TN, MA, IN, MO, MD, CO, WI, MN, SC, AL, LA, KY, OK, CT, AR: 20
+  \item PA, IL, OH, GA, NC, MI, NJ: 50
+  \item CA, TX, FL, NY: 100
+  \item US: 500
+\end{itemize}

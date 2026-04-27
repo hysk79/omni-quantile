@@ -239,10 +239,10 @@ solves equation \eqref{eq:minimax_q}.
 Now, we present the omniprediction error bound for Algorithm \ref{alg:omni-twoplayer_online_q}. The proof is deferred to Appendix \ref{pf:omni-twoplayer_online_q}.
 
 \begin{theorem} \label{thm:omni-twoplayer_online_q}
-  For a quantile level $\alpha \in (0,1)$, let $S_\alpha$ denote the class of scoring functions with representation \eqref{eq:elem_score_q} with $H(\R) = 1$ (the set of \textit{all} scoring functions that are consistent for the $\alpha$-level quantile functional under mild regularity conditions). Consider base forecasters $\{f_b\}_{b=1}^B$ that provide $\alpha$-level quantile forecasts $f_b(t)$ at each time step $t \in [T]$. With the target values $Y_t$, forecaster predictions $f_b(t)$ for $t \in [T], b \in [B]$ each taking values in a uniform grid of size $m$, and the learning rate $\eta = \sqrt{\frac{\log mB}{T}}$, the output $\hat{P}_t$ from Algorithm \ref{alg:omni-twoplayer_online_q} achieves the following omniprediction error:
+  For a quantile level $\alpha \in (0,1)$, let $S_\alpha$ denote the class of scoring functions with representation \eqref{eq:elem_score_q} with $H(\R) = 1$ (the set of \textit{all} scoring functions that are consistent for the $\alpha$-level quantile functional under mild regularity conditions). Consider base forecasters $\{f_b\}_{b=1}^B$ that provide $\alpha$-level quantile forecasts $f_b(t)$ at each time step $t \in [T]$. With the target values $Y_t$, forecaster predictions $f_b(t)$ for $t \in [T], b \in [B]$ each taking values in a uniform grid of size $m$, and the learning rate $\eta = c\sqrt{\frac{\log mB}{T}}$, the output $\hat{P}_t$ from Algorithm \ref{alg:omni-twoplayer_online_q} achieves the following omniprediction error:
   \begin{align*}
   \sup_{S \in S_\alpha,\, b \in [B]} \frac{1}{T} \sum_{t=1}^T \E_{p \sim \hat{P}(t)} [S(p, Y_t)] - \E[S(f_b(t), Y_t)]
-  \leq 2\left(\sqrt{\frac{\log mB}{T}}\right)
+  \leq \left(c+\frac{1}{c}\right)\left(\sqrt{\frac{\log mB}{T}}\right)
   \end{align*}
 \end{theorem}
 
